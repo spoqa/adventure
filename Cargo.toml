@@ -1,0 +1,18 @@
+[package]
+name = "adventure"
+version = "0.1.0"
+description = "Helps your great adventure for the various type of requests."
+repository = "https://github.com/spoqa/adventure"
+readme = "README.md"
+categories = [
+    "asynchronous",
+    "api-bindings",
+    "network-programming",
+    "rust-patterns",
+    "web-programming::http-client",
+]
+authors = ["Eunchong Yu <gracie@spoqa.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[dependencies]
