@@ -1,0 +1,16 @@
+[package]
+workspace = ".."
+name = "test-futures01"
+version = "0.1.0"
+authors = ["Eunchong Yu <gracie@spoqa.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+futures = "0.1.25"
+tokio = "0.1"
+
+[dependencies.adventure]
+path = ".."
+default-features = false
+features = ["futures01"]

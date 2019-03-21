@@ -1,3 +1,9 @@
+[workspace]
+members = [
+    ".",
+    "test-*",
+]
+
 [package]
 name = "adventure"
 version = "0.1.0"
@@ -15,4 +21,22 @@ authors = ["Eunchong Yu <gracie@spoqa.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
 
+[features]
+default = ["futures01"]
+futures01 = ["futures"]
+std-futures = ["futures-core-preview", "futures-util-preview"]
+
 [dependencies]
+pin-utils = "0.1.0-alpha.4"
+
+[dependencies.futures]
+version = "0.1.25"
+optional = true
+
+[dependencies.futures-core-preview]
+version = "0.3.0-alpha.13"
+optional = true
+
+[dependencies.futures-util-preview]
+version = "0.3.0-alpha.13"
+optional = true
