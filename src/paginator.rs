@@ -6,6 +6,7 @@ use crate::compat::Poll;
 use crate::request::PagedRequest;
 use crate::response::Response;
 
+/// A stream over the pages that consists the entire set from the request.
 pub struct Paginator<C, R>
 where
     R: PagedRequest<C>,

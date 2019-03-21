@@ -1,3 +1,4 @@
+//! A trait of responses and common adaptors.
 use std::pin::Pin;
 
 use crate::compat::Poll;
@@ -8,11 +9,16 @@ pub use self::impl_futures01::*;
 #[cfg(feature = "std-futures")]
 pub use self::impl_std::*;
 
+/// Trait to represent types of the response, and the task to receive it.
 pub trait Response {
+    /// The type of successful values of this response.
     type Ok;
+    /// The type of failures of this response.
     type Error;
+    /// The type of handles for waking up a task by notifying its executor that the response has arrived.
     type Waker;
 
+    /// Poll this [`Response`].
     fn poll(self: Pin<&mut Self>, w: &Self::Waker) -> Poll<Result<Self::Ok, Self::Error>>;
 }
 
@@ -25,6 +31,7 @@ mod impl_futures01 {
     use super::Response;
     use crate::compat::Poll;
 
+    /// Converts a futures 0.1 [`Future`] into a [`Response`].
     pub struct ResponseFuture<F> {
         inner: F,
     }
@@ -57,6 +64,8 @@ mod impl_futures01 {
         }
     }
 
+    /// A [`Response`] wrapping a trait object of polling futures,
+    /// similar to [`Box`]`<dyn `[`Future`]`>`.
     pub struct ResponseLocalFutureObj<'a, T, E> {
         inner: Box<dyn Future<Item = T, Error = E> + 'a>,
     }
@@ -90,6 +99,8 @@ mod impl_futures01 {
         }
     }
 
+    /// A [`Response`] wrapping a trait object of polling futures,
+    /// similar to [`Box`]`<dyn `[`Future`]` + `[`Send`]` + `[`Sync`]`>`.
     pub struct ResponseFutureObj<'a, T, E> {
         inner: Box<dyn Future<Item = T, Error = E> + Send + Sync + 'a>,
     }
@@ -140,6 +151,7 @@ mod impl_std {
     use super::Response;
     use crate::compat::Poll;
 
+    /// Converts a [`std::future::Future`] into a [`Response`].
     pub struct ResponseStdFuture<F> {
         inner: F,
     }
@@ -172,6 +184,8 @@ mod impl_std {
         }
     }
 
+    /// A [`Response`] wrapping a trait object of polling futures,
+    /// similar to [`LocalFutureObj`].
     pub struct ResponseStdLocalFutureObj<'a, T, E> {
         inner: LocalFutureObj<'a, Result<T, E>>,
     }
@@ -203,6 +217,8 @@ mod impl_std {
         }
     }
 
+    /// A [`Response`] wrapping a trait object of polling futures,
+    /// similar to [`FutureObj`].
     pub struct ResponseStdFutureObj<'a, T, E> {
         inner: FutureObj<'a, Result<T, E>>,
     }
