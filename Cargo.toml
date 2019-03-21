@@ -42,3 +42,6 @@ optional = true
 
 [dev-dependencies.tokio]
 version = "0.1"
+
+[package.metadata.docs.rs]
+features = ["std-futures"]
