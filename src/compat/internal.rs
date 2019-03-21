@@ -11,7 +11,7 @@ use std::result::Result;
 /// It should be replaced to the standard one after [`futures_api`] has been
 /// released on the stable channel.
 ///
-/// Otherwise, you can turn on `std-futures` feature of this crate
+/// Otherwise, you can turn on `std-future` feature of this crate
 /// if you're on the nightly channel.
 ///
 /// [futures 0.1]: https://docs.rs/crate/futures/0.1
@@ -89,17 +89,21 @@ impl<T> From<T> for Poll<T> {
     }
 }
 
-pub struct Waker { _impl: () }
+pub struct Waker {
+    _impl: (),
+}
 
 impl Waker {
     pub unsafe fn blank() -> Waker {
-        if cfg!(all(feature = "future01", not(feature = "std-futures"))) {
+        if cfg!(all(feature = "future01", not(feature = "std-future"))) {
             Waker { _impl: () }
         } else {
             panic!("")
         }
     }
 
-    pub fn wake(&self) { }
-    pub fn will_wake(&self, _other: &Waker) -> bool { false }
+    pub fn wake(&self) {}
+    pub fn will_wake(&self, _other: &Waker) -> bool {
+        false
+    }
 }

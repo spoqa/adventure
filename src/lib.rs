@@ -5,7 +5,7 @@
 //! with it at the high-level.
 //!
 //! [request-response pattern]: https://en.wikipedia.org/wiki/Request%E2%80%93response
-#![cfg_attr(feature = "std-futures", feature(futures_api))]
+#![cfg_attr(feature = "std-future", feature(futures_api))]
 #![deny(rust_2018_idioms)]
 
 pub mod compat;

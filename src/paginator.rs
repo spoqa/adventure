@@ -81,7 +81,7 @@ where
     }
 }
 
-#[cfg(all(feature = "futures01", not(feature = "std-futures")))]
+#[cfg(all(feature = "futures01", not(feature = "std-future")))]
 mod impl_futures01 {
     use std::pin::Pin;
 
@@ -112,7 +112,7 @@ mod impl_futures01 {
     }
 }
 
-#[cfg(feature = "std-futures")]
+#[cfg(feature = "std-future")]
 mod impl_std {
     use std::pin::Pin;
 

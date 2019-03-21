@@ -6,7 +6,7 @@ use crate::compat::{Poll, Waker};
 #[cfg(feature = "futures01")]
 pub use self::impl_futures01::*;
 
-#[cfg(feature = "std-futures")]
+#[cfg(feature = "std-future")]
 pub use self::impl_std::*;
 
 /// Trait to represent types of the response, and the task to receive it.
@@ -126,7 +126,7 @@ mod impl_futures01 {
 
 }
 
-#[cfg(feature = "std-futures")]
+#[cfg(feature = "std-future")]
 #[doc(hidden)]
 mod impl_std {
     use std::pin::Pin;

@@ -140,7 +140,7 @@ macro_rules! test_cases {
     };
 }
 
-#[cfg(all(feature = "futures01", not(feature = "std-futures")))]
+#[cfg(all(feature = "futures01", not(feature = "std-future")))]
 mod futures01 {
     use super::*;
 
@@ -185,7 +185,7 @@ mod futures01 {
     test_cases!();
 }
 
-#[cfg(feature = "std-futures-test")]
+#[cfg(feature = "std-future-test")]
 mod std_futures {
     use super::*;
 

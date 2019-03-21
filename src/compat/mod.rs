@@ -1,11 +1,11 @@
 //! A types for compatibility with futures 0.1 crate.
 
-#[cfg(feature = "std-futures")]
+#[cfg(feature = "std-future")]
 mod internal {
     pub use std::task::{Poll, Waker};
 }
 
-#[cfg(not(feature = "std-futures"))]
+#[cfg(not(feature = "std-future"))]
 mod internal;
 
 #[doc(inline)]
@@ -33,10 +33,10 @@ mod internal_futures01 {
         }
     }
 
-    #[cfg(feature = "std-futures")]
+    #[cfg(feature = "std-future")]
     type Wrap<T> = crate::response::ResponseStdFuture<futures_util::compat::Compat01As03<T>>;
 
-    #[cfg(not(feature = "std-futures"))]
+    #[cfg(not(feature = "std-future"))]
     type Wrap<T> = T;
 
     pub struct Compat<T> {
@@ -46,7 +46,7 @@ mod internal_futures01 {
     impl<T> Compat<T> {
         unsafe_unpinned!(inner: Wrap<T>);
 
-        #[cfg(feature = "std-futures")]
+        #[cfg(feature = "std-future")]
         pub(crate) fn new(object: T) -> Self {
             let object = futures_util::compat::Compat01As03::new(object);
             Compat {
@@ -54,7 +54,7 @@ mod internal_futures01 {
             }
         }
 
-        #[cfg(not(feature = "std-futures"))]
+        #[cfg(not(feature = "std-future"))]
         pub(crate) fn new(object: T) -> Self {
             Compat { inner: object }
         }
@@ -67,12 +67,12 @@ mod internal_futures01 {
         type Ok = T::Item;
         type Error = T::Error;
 
-        #[cfg(feature = "std-futures")]
+        #[cfg(feature = "std-future")]
         fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
             Pin::new(&mut self.inner).poll(w)
         }
 
-        #[cfg(not(feature = "std-futures"))]
+        #[cfg(not(feature = "std-future"))]
         fn poll(self: Pin<&mut Self>, _w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
             convert_01_to_std(Future01::poll(self.inner()))
         }

@@ -18,8 +18,9 @@ edition = "2018"
 [features]
 default = ["futures01"]
 futures01 = ["futures"]
-std-futures = ["futures-core-preview", "futures-util-preview"]
-std-futures-test = ["std-futures", "futures-executor-preview"]
+std-future = ["futures-core-preview", "futures-util-preview"]
+std-future-test = ["std-future", "futures-executor-preview"]
+
 
 [dependencies]
 pin-utils = "0.1.0-alpha.4"
@@ -45,4 +46,4 @@ optional = true
 version = "0.1"
 
 [package.metadata.docs.rs]
-features = ["std-futures"]
+features = ["std-future"]
