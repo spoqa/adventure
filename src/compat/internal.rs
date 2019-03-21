@@ -88,3 +88,18 @@ impl<T> From<T> for Poll<T> {
         Poll::Ready(t)
     }
 }
+
+pub struct Waker { _impl: () }
+
+impl Waker {
+    pub unsafe fn blank() -> Waker {
+        if cfg!(all(feature = "future01", not(feature = "std-futures"))) {
+            Waker { _impl: () }
+        } else {
+            panic!("")
+        }
+    }
+
+    pub fn wake(&self) { }
+    pub fn will_wake(&self, _other: &Waker) -> bool { false }
+}

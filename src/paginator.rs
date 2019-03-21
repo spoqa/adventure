@@ -2,7 +2,7 @@ use std::pin::Pin;
 
 use pin_utils::unsafe_pinned;
 
-use crate::compat::Poll;
+use crate::compat::{Poll, Waker};
 use crate::request::PagedRequest;
 use crate::response::Response;
 
@@ -45,10 +45,7 @@ where
     C: Clone,
     R: PagedRequest<C> + Unpin,
 {
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        waker: &<R::Response as Response>::Waker,
-    ) -> Poll<Option<Result<R::Ok, R::Error>>> {
+    fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Result<R::Ok, R::Error>>> {
         if self.as_mut().next().is_none() {
             if let Some(request) = &self.as_ref().request {
                 let next = request.send(self.client.clone());
@@ -84,28 +81,28 @@ where
     }
 }
 
-#[cfg(feature = "futures01")]
+#[cfg(all(feature = "futures01", not(feature = "std-futures")))]
 mod impl_futures01 {
     use std::pin::Pin;
 
     use futures::{Async, Poll, Stream};
 
     use super::Paginator;
+    use crate::compat::Waker;
     use crate::request::PagedRequest;
-    use crate::response::Response;
 
     impl<C, R> Stream for Paginator<C, R>
     where
         C: Clone + Unpin,
         R: PagedRequest<C> + Unpin,
-        <R::Response as Response>::Waker: Default,
     {
         type Item = R::Ok;
         type Error = R::Error;
 
         fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
             use crate::compat::Poll::*;
-            match Paginator::poll_next(Pin::new(self), &Default::default()) {
+            let w = unsafe { Waker::blank() };
+            match Paginator::poll_next(Pin::new(self), &w) {
                 Ready(Some(Ok(i))) => Ok(Async::Ready(Some(i))),
                 Ready(Some(Err(e))) => Err(e),
                 Ready(None) => Ok(Async::Ready(None)),
@@ -124,13 +121,11 @@ mod impl_std {
     use super::Paginator;
     use crate::compat::Poll;
     use crate::request::PagedRequest;
-    use crate::response::Response;
 
     impl<C, R> Stream for Paginator<C, R>
     where
         C: Clone,
         R: PagedRequest<C> + Unpin,
-        R::Response: Response<Waker = Waker>,
     {
         type Item = Result<R::Ok, R::Error>;
 

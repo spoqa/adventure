@@ -1,7 +1,7 @@
 //! A trait of responses and common adaptors.
 use std::pin::Pin;
 
-use crate::compat::Poll;
+use crate::compat::{Poll, Waker};
 
 #[cfg(feature = "futures01")]
 pub use self::impl_futures01::*;
@@ -15,122 +15,112 @@ pub trait Response {
     type Ok;
     /// The type of failures of this response.
     type Error;
-    /// The type of handles for waking up a task by notifying its executor that the response has arrived.
-    type Waker;
 
     /// Poll this [`Response`].
-    fn poll(self: Pin<&mut Self>, w: &Self::Waker) -> Poll<Result<Self::Ok, Self::Error>>;
+    fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>>;
 }
 
 #[cfg(feature = "futures01")]
 mod impl_futures01 {
     use std::pin::Pin;
 
-    use futures::{Async, Future};
+    use futures::Future as Future01;
+    use pin_utils::unsafe_pinned;
 
     use super::Response;
-    use crate::compat::Poll;
+    use crate::compat::{Compat, Poll, Waker};
 
     /// Converts a futures 0.1 [`Future`] into a [`Response`].
     pub struct ResponseFuture<F> {
-        inner: F,
+        inner: Compat<F>,
+    }
+
+    impl<F> ResponseFuture<F> {
+        unsafe_pinned!(inner: Compat<F>);
+
+        pub fn new(fut: F) -> Self {
+            ResponseFuture {
+                inner: Compat::new(fut),
+            }
+        }
     }
 
     impl<F: Unpin> Unpin for ResponseFuture<F> {}
 
     impl<F> From<F> for ResponseFuture<F>
     where
-        F: Future,
+        F: Future01,
     {
         fn from(fut: F) -> Self {
-            ResponseFuture { inner: fut }
+            ResponseFuture::new(fut)
         }
     }
 
     impl<F> Response for ResponseFuture<F>
     where
-        F: Future + Unpin,
+        F: Future01,
     {
         type Ok = F::Item;
         type Error = F::Error;
-        type Waker = ();
 
-        fn poll(mut self: Pin<&mut Self>, _w: &Self::Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            match Future::poll(&mut self.inner) {
-                Ok(Async::Ready(i)) => Poll::Ready(Ok(i)),
-                Ok(Async::NotReady) => Poll::Pending,
-                Err(e) => Poll::Ready(Err(e)),
-            }
+        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+            self.inner().poll(w)
         }
     }
 
     /// A [`Response`] wrapping a trait object of polling futures,
     /// similar to [`Box`]`<dyn `[`Future`]`>`.
     pub struct ResponseLocalFutureObj<'a, T, E> {
-        inner: Box<dyn Future<Item = T, Error = E> + 'a>,
+        inner: Compat<Box<dyn Future01<Item = T, Error = E> + 'a>>,
     }
 
     impl<'a, T, E> ResponseLocalFutureObj<'a, T, E> {
+        unsafe_pinned!(inner: Compat<Box<dyn Future01<Item = T, Error = E> + 'a>>);
+
         pub fn new<F>(fut: F) -> Self
         where
-            F: Future<Item = T, Error = E> + 'a,
+            F: Future01<Item = T, Error = E> + 'a,
         {
             ResponseLocalFutureObj {
-                inner: Box::new(fut),
+                inner: Compat::new(Box::new(fut)),
             }
-        }
-
-        pub fn into_inner(self) -> Box<dyn Future<Item = T, Error = E> + 'a> {
-            self.inner
         }
     }
 
     impl<'a, T, E> Response for ResponseLocalFutureObj<'a, T, E> {
         type Ok = T;
         type Error = E;
-        type Waker = ();
 
-        fn poll(mut self: Pin<&mut Self>, _w: &Self::Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            match Future::poll(&mut self.inner) {
-                Ok(Async::Ready(i)) => Poll::Ready(Ok(i)),
-                Ok(Async::NotReady) => Poll::Pending,
-                Err(e) => Poll::Ready(Err(e)),
-            }
+        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+            self.inner().poll(w)
         }
     }
 
     /// A [`Response`] wrapping a trait object of polling futures,
     /// similar to [`Box`]`<dyn `[`Future`]` + `[`Send`]` + `[`Sync`]`>`.
     pub struct ResponseFutureObj<'a, T, E> {
-        inner: Box<dyn Future<Item = T, Error = E> + Send + Sync + 'a>,
+        inner: Compat<Box<dyn Future01<Item = T, Error = E> + Send + Sync + 'a>>,
     }
 
     impl<'a, T, E> ResponseFutureObj<'a, T, E> {
+        unsafe_pinned!(inner: Compat<Box<dyn Future01<Item = T, Error = E> + Send + Sync + 'a>>);
+
         pub fn new<F>(fut: F) -> Self
         where
-            F: Future<Item = T, Error = E> + Send + Sync + 'a,
+            F: Future01<Item = T, Error = E> + Send + Sync + 'a,
         {
             ResponseFutureObj {
-                inner: Box::new(fut),
+                inner: Compat::new(Box::new(fut)),
             }
-        }
-
-        pub fn into_inner(self) -> Box<dyn Future<Item = T, Error = E> + Send + Sync + 'a> {
-            self.inner
         }
     }
 
     impl<'a, T, E> Response for ResponseFutureObj<'a, T, E> {
         type Ok = T;
         type Error = E;
-        type Waker = ();
 
-        fn poll(mut self: Pin<&mut Self>, _w: &Self::Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            match Future::poll(&mut self.inner) {
-                Ok(Async::Ready(i)) => Poll::Ready(Ok(i)),
-                Ok(Async::NotReady) => Poll::Pending,
-                Err(e) => Poll::Ready(Err(e)),
-            }
+        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+            self.inner().poll(w)
         }
     }
 
@@ -143,13 +133,12 @@ mod impl_std {
 
     use futures_core::{
         future::{FutureObj, LocalFutureObj},
-        task::Waker,
         Future, TryFuture,
     };
     use pin_utils::unsafe_pinned;
 
     use super::Response;
-    use crate::compat::Poll;
+    use crate::compat::{Poll, Waker};
 
     /// Converts a [`std::future::Future`] into a [`Response`].
     pub struct ResponseStdFuture<F> {
@@ -158,6 +147,10 @@ mod impl_std {
 
     impl<F> ResponseStdFuture<F> {
         unsafe_pinned!(inner: F);
+
+        pub fn new(fut: F) -> Self {
+            ResponseStdFuture { inner: fut }
+        }
     }
 
     impl<F: Unpin> Unpin for ResponseStdFuture<F> {}
@@ -167,7 +160,7 @@ mod impl_std {
         F: TryFuture,
     {
         fn from(fut: F) -> Self {
-            ResponseStdFuture { inner: fut }
+            ResponseStdFuture::new(fut)
         }
     }
 
@@ -177,9 +170,8 @@ mod impl_std {
     {
         type Ok = F::Ok;
         type Error = F::Error;
-        type Waker = Waker;
 
-        fn poll(self: Pin<&mut Self>, w: &Self::Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
             TryFuture::try_poll(self.inner(), w)
         }
     }
@@ -210,9 +202,8 @@ mod impl_std {
     impl<'a, T, E> Response for ResponseStdLocalFutureObj<'a, T, E> {
         type Ok = T;
         type Error = E;
-        type Waker = Waker;
 
-        fn poll(self: Pin<&mut Self>, w: &Self::Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
             TryFuture::try_poll(self.inner(), w)
         }
     }
@@ -243,9 +234,8 @@ mod impl_std {
     impl<'a, T, E> Response for ResponseStdFutureObj<'a, T, E> {
         type Ok = T;
         type Error = E;
-        type Waker = Waker;
 
-        fn poll(self: Pin<&mut Self>, w: &Self::Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
             TryFuture::try_poll(self.inner(), w)
         }
     }
