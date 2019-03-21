@@ -1,9 +1,3 @@
-[workspace]
-members = [
-    ".",
-    "test-*",
-]
-
 [package]
 name = "adventure"
 version = "0.1.0"
@@ -25,6 +19,7 @@ edition = "2018"
 default = ["futures01"]
 futures01 = ["futures"]
 std-futures = ["futures-core-preview", "futures-util-preview"]
+std-futures-test = ["std-futures", "futures-executor-preview"]
 
 [dependencies]
 pin-utils = "0.1.0-alpha.4"
@@ -40,3 +35,10 @@ optional = true
 [dependencies.futures-util-preview]
 version = "0.3.0-alpha.13"
 optional = true
+
+[dependencies.futures-executor-preview]
+version = "0.3.0-alpha.13"
+optional = true
+
+[dev-dependencies.tokio]
+version = "0.1"

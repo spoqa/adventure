@@ -10,5 +10,5 @@ pub trait Request<C> {
 }
 
 pub trait PagedRequest<C>: Request<C> {
-    fn advance(&mut self, response: &<Self::Response as Response>::Ok) -> bool;
+    fn advance(&mut self, response: &Self::Ok) -> bool;
 }

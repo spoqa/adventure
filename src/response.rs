@@ -131,9 +131,9 @@ mod impl_std {
     use std::pin::Pin;
 
     use futures_core::{
-        future::{FutureObj, LocalFutureObj, UnsafeFutureObj},
+        future::{FutureObj, LocalFutureObj},
         task::Waker,
-        TryFuture,
+        Future, TryFuture,
     };
     use pin_utils::unsafe_pinned;
 
@@ -181,10 +181,10 @@ mod impl_std {
 
         pub fn new<F>(fut: F) -> Self
         where
-            F: UnsafeFutureObj<'a, Result<T, E>>,
+            F: Future<Output = Result<T, E>> + 'a,
         {
             ResponseStdLocalFutureObj {
-                inner: LocalFutureObj::new(fut),
+                inner: LocalFutureObj::new(Box::pin(fut)),
             }
         }
 
@@ -212,10 +212,10 @@ mod impl_std {
 
         pub fn new<F>(fut: F) -> Self
         where
-            F: UnsafeFutureObj<'a, Result<T, E>> + Send,
+            F: Future<Output = Result<T, E>> + Send + 'a,
         {
             ResponseStdFutureObj {
-                inner: FutureObj::new(fut),
+                inner: FutureObj::new(Box::pin(fut)),
             }
         }
 

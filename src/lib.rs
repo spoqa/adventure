@@ -7,6 +7,9 @@ pub mod prelude;
 pub mod request;
 pub mod response;
 
+#[cfg(test)]
+mod test;
+
 pub use crate::paginator::Paginator;
 pub use crate::request::{PagedRequest, Request};
 pub use crate::response::Response;
