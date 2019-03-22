@@ -1,114 +1,25 @@
-mod backoff;
+mod error;
+#[cfg(feature = "backoff-tokio")]
+mod tokio;
+mod util;
 
-use std::error::Error as StdError;
-use std::fmt::{self, Display};
 use std::pin::Pin;
 
 use pin_utils::unsafe_pinned;
 
-use self::backoff::{BackoffError, Waiting};
+use self::util::Waiting;
 use crate::compat::{Poll, Waker};
 use crate::request::{PagedRequest, Request};
 use crate::response::Response;
 
-pub use ::backoff::{backoff::Backoff, ExponentialBackoff};
+pub use self::{
+    error::{BackoffError, RetryError},
+    util::Retry,
+};
+pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
 #[cfg(feature = "backoff-tokio")]
-pub use self::timer::BackoffTimer;
-
-#[derive(Debug)]
-pub struct RetryError<E> {
-    inner: RetryErrorKind<E>,
-}
-
-#[derive(Debug)]
-enum RetryErrorKind<E> {
-    Inner(E),
-    Backoff(BackoffError),
-}
-
-impl<E: Display> Display for RetryError<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use RetryErrorKind::*;
-        match &self.inner {
-            Inner(e) => e.fmt(f),
-            Backoff(e) => e.fmt(f),
-        }
-    }
-}
-
-impl<E: StdError + 'static> StdError for RetryError<E> {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        use RetryErrorKind::*;
-        match &self.inner {
-            Inner(e) => Some(&*e),
-            Backoff(e) => Some(&*e),
-        }
-    }
-}
-
-impl<E> RetryError<E> {
-    pub fn into_inner(self) -> Option<E> {
-        if let RetryErrorKind::Inner(e) = self.inner {
-            Some(e)
-        } else {
-            None
-        }
-    }
-
-    pub fn is_timeout(&self) -> bool {
-        if let RetryErrorKind::Backoff(e) = &self.inner {
-            e.is_timeout()
-        } else {
-            false
-        }
-    }
-
-    pub fn is_shutdown(&self) -> bool {
-        if let RetryErrorKind::Backoff(e) = &self.inner {
-            e.is_shutdown()
-        } else {
-            false
-        }
-    }
-}
-
-impl<E> From<BackoffError> for RetryError<E> {
-    fn from(e: BackoffError) -> Self {
-        RetryError {
-            inner: RetryErrorKind::Backoff(e),
-        }
-    }
-}
-
-pub trait Retry {
-    type Backoff: Backoff;
-    type Wait: Response<Ok = (), Error = BackoffError>;
-
-    fn generate(&self) -> Self::Backoff;
-    fn wait(backoff: &mut Self::Backoff) -> Option<Self::Wait>;
-}
-
-#[cfg(feature = "backoff-tokio")]
-mod timer {
-    use super::backoff::Delay;
-    use super::*;
-
-    pub struct BackoffTimer;
-
-    impl Retry for BackoffTimer {
-        type Backoff = ExponentialBackoff;
-        type Wait = Delay;
-
-        fn generate(&self) -> Self::Backoff {
-            ExponentialBackoff::default()
-        }
-
-        fn wait(backoff: &mut Self::Backoff) -> Option<Self::Wait> {
-            dbg!(backoff.next_backoff()).map(Delay::expires_in)
-        }
-    }
-}
+pub use self::tokio::{BackoffTimer, Delay};
 
 pub struct WithBackoff<R, T> {
     inner: R,
@@ -261,11 +172,11 @@ where
 mod test {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
+    use ::tokio::runtime::current_thread::block_on_all;
     use futures_util::{
         future::{self, FutureExt},
         try_future::TryFutureExt,
     };
-    use tokio::runtime::current_thread::block_on_all;
 
     use super::*;
     use crate::prelude::*;
