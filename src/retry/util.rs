@@ -1,45 +1,40 @@
-use std::pin::Pin;
+use std::time::Duration;
 
-use super::{Backoff, BackoffError, RetryError};
-use crate::compat::{Poll, Waker};
-use crate::request::RetriableRequest;
+#[cfg(feature = "backoff-tokio")]
+use super::tokio::Delay;
+use super::{Backoff, BackoffError, ExponentialBackoff};
 use crate::response::Response;
 
 pub trait Retry {
     type Wait: Response<Ok = (), Error = BackoffError>;
 
-    fn wait(
-        &mut self,
-    ) -> Result<Self::Wait, BackoffError>;
+    fn new() -> Self;
+    fn next_backoff(&mut self) -> Result<Duration, BackoffError>;
+    fn wait(&self, interval: Duration) -> Self::Wait;
 }
 
-pub(super) struct Waiting<W> {
-    inner: WaitingImpl<W>,
+#[cfg(feature = "backoff-tokio")]
+pub struct RetryBackoff {
+    backoff: ExponentialBackoff,
 }
 
-enum WaitingImpl<W> {
-    Wait(W),
-    Timeout,
-}
+#[cfg(feature = "backoff-tokio")]
+impl Retry for RetryBackoff {
+    type Wait = Delay;
 
-impl<R> From<Option<R>> for Waiting<R> {
-    fn from(r: Option<R>) -> Self {
-        let inner = r.map(WaitingImpl::Wait).unwrap_or(WaitingImpl::Timeout);
-        Waiting { inner }
-    }
-}
-
-impl<R> Response for Waiting<R>
-where
-    R: Response<Ok = (), Error = BackoffError> + Unpin,
-{
-    type Ok = ();
-    type Error = BackoffError;
-
-    fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-        match &mut self.inner {
-            WaitingImpl::Wait(fut) => Response::poll(Pin::new(fut), w),
-            WaitingImpl::Timeout => Poll::Ready(Err(BackoffError::timeout())),
+    fn new() -> Self {
+        RetryBackoff {
+            backoff: ExponentialBackoff::default(),
         }
+    }
+
+    fn next_backoff(&mut self) -> Result<Duration, BackoffError> {
+        self.backoff
+            .next_backoff()
+            .ok_or_else(BackoffError::timeout)
+    }
+
+    fn wait(&self, interval: Duration) -> Self::Wait {
+        Delay::expires_in(interval)
     }
 }

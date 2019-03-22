@@ -71,7 +71,10 @@ impl<E> RetryError<E> {
         }
     }
 
-    pub fn and_then<F, R>(self, f: F) -> RetryError<R> where F: FnOnce(E) -> RetryError<R> {
+    pub fn and_then<F, R>(self, f: F) -> RetryError<R>
+    where
+        F: FnOnce(E) -> RetryError<R>,
+    {
         use RetryErrorKind::*;
         match self.inner {
             Inner(e) => f(e),

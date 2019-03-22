@@ -21,11 +21,7 @@ pub trait RepeatableRequest<C>: Request<C> {
 }
 
 pub trait RetriableRequest<C>: RepeatableRequest<C> {
-    fn should_retry(
-        &self,
-        error: &Self::Error,
-        next_interval: Duration,
-    ) -> bool;
+    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool;
 }
 
 /// A request able to send subsequent requests to enumerate the entire result.
