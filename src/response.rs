@@ -1,7 +1,7 @@
 //! A trait of responses and common adaptors.
 use std::pin::Pin;
 
-use crate::compat::{Poll, Waker};
+use crate::task::{Poll, Waker};
 
 #[cfg(feature = "futures01")]
 pub use self::impl_futures01::*;
@@ -28,7 +28,7 @@ mod impl_futures01 {
     use pin_utils::unsafe_pinned;
 
     use super::Response;
-    use crate::compat::{Compat, Poll, Waker};
+    use crate::task::{Compat, Poll, Waker};
 
     /// Converts a futures 0.1 [`Future`] into a [`Response`].
     pub struct ResponseFuture<F> {
@@ -138,7 +138,7 @@ mod impl_std {
     use pin_utils::unsafe_pinned;
 
     use super::Response;
-    use crate::compat::{Poll, Waker};
+    use crate::task::{Poll, Waker};
 
     /// Converts a [`std::future::Future`] into a [`Response`].
     pub struct ResponseStdFuture<F> {

@@ -19,7 +19,7 @@ pub struct IntoFuture<T>(T);
 mod impl_futures01 {
     use futures::{Future as Future01, Poll as Poll01};
 
-    use crate::compat::convert_std_to_01;
+    use crate::task::convert_std_to_01;
     use crate::response::Response;
 
     use super::IntoFuture;
@@ -49,7 +49,7 @@ mod impl_futures01 {
         use futures_util::task::{ArcWake, WakerRef};
 
         use super::IntoFuture;
-        use crate::compat::Waker;
+        use crate::task::Waker;
 
         #[derive(Clone)]
         struct Current(task01::Task);
@@ -107,7 +107,7 @@ mod impl_futures01 {
     mod internal {
         use std::pin::Pin;
 
-        use crate::compat::Waker;
+        use crate::task::Waker;
 
         use super::*;
 
@@ -128,7 +128,7 @@ mod impl_std {
 
     use futures_core::Future;
 
-    use crate::compat::{Poll, Waker};
+    use crate::task::{Poll, Waker};
     use crate::response::Response;
 
     use super::IntoFuture;

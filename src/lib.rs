@@ -8,15 +8,15 @@
 #![cfg_attr(feature = "std-future", feature(futures_api))]
 #![deny(rust_2018_idioms)]
 
-pub mod compat;
 pub mod prelude;
 pub mod request;
 pub mod response;
+pub mod task;
+pub mod util;
 
 #[cfg(feature = "backoff")]
 pub mod retry;
 
-mod adaptor;
 mod paginator;
 
 #[cfg(test)]

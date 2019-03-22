@@ -2,7 +2,7 @@ use std::pin::Pin;
 
 use pin_utils::unsafe_pinned;
 
-use crate::compat::{Poll, Waker};
+use crate::task::{Poll, Waker};
 use crate::request::PagedRequest;
 use crate::response::Response;
 
@@ -88,7 +88,7 @@ mod impl_futures01 {
     use futures::{Async, Poll, Stream};
 
     use super::Paginator;
-    use crate::compat::Waker;
+    use crate::task::Waker;
     use crate::request::PagedRequest;
 
     impl<C, R> Stream for Paginator<C, R>
@@ -100,7 +100,7 @@ mod impl_futures01 {
         type Error = R::Error;
 
         fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-            use crate::compat::Poll::*;
+            use crate::task::Poll::*;
             let w = unsafe { Waker::blank() };
             match Paginator::poll_next(Pin::new(self), &w) {
                 Ready(Some(Ok(i))) => Ok(Async::Ready(Some(i))),
@@ -119,7 +119,7 @@ mod impl_std {
     use futures_core::{task::Waker, Stream};
 
     use super::Paginator;
-    use crate::compat::Poll;
+    use crate::task::Poll;
     use crate::request::PagedRequest;
 
     impl<C, R> Stream for Paginator<C, R>
