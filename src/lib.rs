@@ -13,6 +13,9 @@ pub mod prelude;
 pub mod request;
 pub mod response;
 
+#[cfg(feature = "backoff")]
+pub mod retry;
+
 mod adaptor;
 mod paginator;
 
