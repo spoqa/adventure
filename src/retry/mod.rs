@@ -23,15 +23,15 @@ pub use self::{
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
 pub struct WithBackoff<'a, R, T> {
-    inner: &'a R,
+    inner: Pin<&'a R>,
     _phantom: PhantomData<T>,
 }
 
 #[cfg(feature = "backoff-tokio")]
-impl<'a, R> WithBackoff<'a, R, RetryBackoff> {
+impl<'a, R> WithBackoff<'a, R, RetryBackoff> where R: Unpin {
     fn with_retry(req: &'a R) -> Self {
         WithBackoff {
-            inner: req,
+            inner: Pin::new(req),
             _phantom: PhantomData,
         }
     }
@@ -41,7 +41,7 @@ impl<'a, R, T> Unpin for WithBackoff<'a, R, T> where R: Unpin {}
 
 impl<'a, R, T, C> Request<C> for WithBackoff<'a, R, T>
 where
-    R: RetriableRequest<C> + Unpin,
+    R: RetriableRequest<C>,
     T: Retry + Unpin,
     C: Clone,
 {
@@ -56,7 +56,7 @@ where
 
 impl<'a, R, T, C> RepeatableRequest<C> for WithBackoff<'a, R, T>
 where
-    R: RetriableRequest<C> + Unpin,
+    R: RetriableRequest<C>,
     T: Retry + Unpin,
     C: Clone,
 {
@@ -77,7 +77,7 @@ where
     T: Retry,
 {
     client: C,
-    request: &'a R,
+    request: Pin<&'a R>,
     retry: T,
     next: Option<R::Response>,
     wait: Option<T::Wait>,
@@ -88,7 +88,7 @@ where
     R: RetriableRequest<C>,
     T: Retry,
 {
-    unsafe_pinned!(request: &'a R);
+    unsafe_pinned!(request: Pin<&'a R>);
     unsafe_pinned!(retry: T);
     unsafe_pinned!(next: Option<R::Response>);
     unsafe_pinned!(wait: Option<T::Wait>);
@@ -106,7 +106,7 @@ where
 
 impl<'a, R, T, C> Response for RetriableResponse<'a, R, T, C>
 where
-    R: RetriableRequest<C> + Unpin,
+    R: RetriableRequest<C>,
     T: Retry + Unpin,
     C: Clone,
 {
@@ -158,7 +158,7 @@ where
 
 impl<'a, R, T, C> RetriableResponse<'a, R, T, C>
 where
-    R: RetriableRequest<C> + Unpin,
+    R: RetriableRequest<C>,
     T: Retry + Unpin,
     C: Clone,
 {
