@@ -6,7 +6,6 @@ mod tokio;
 mod util;
 
 use std::pin::Pin;
-use std::time::Duration;
 
 use pin_utils::unsafe_pinned;
 
@@ -23,14 +22,14 @@ pub use self::{
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
-pub struct WithBackoff<R, T> {
-    inner: R,
+pub struct WithBackoff<'a, R, T> {
+    inner: &'a R,
     _phantom: PhantomData<T>,
 }
 
 #[cfg(feature = "backoff-tokio")]
-impl<R> WithBackoff<R, RetryBackoff> {
-    fn with_retry(req: R) -> Self {
+impl<'a, R> WithBackoff<'a, R, RetryBackoff> {
+    fn with_retry(req: &'a R) -> Self {
         WithBackoff {
             inner: req,
             _phantom: PhantomData,
@@ -38,9 +37,9 @@ impl<R> WithBackoff<R, RetryBackoff> {
     }
 }
 
-impl<R, T> Unpin for WithBackoff<R, T> where R: Unpin {}
+impl<'a, R, T> Unpin for WithBackoff<'a, R, T> where R: Unpin {}
 
-impl<'a, R, T, C> Request<C> for &'a WithBackoff<R, T>
+impl<'a, R, T, C> Request<C> for WithBackoff<'a, R, T>
 where
     R: RetriableRequest<C> + Unpin,
     T: Retry + Unpin,
@@ -55,7 +54,7 @@ where
     }
 }
 
-impl<'a, R, T, C> RepeatableRequest<C> for &'a WithBackoff<R, T>
+impl<'a, R, T, C> RepeatableRequest<C> for WithBackoff<'a, R, T>
 where
     R: RetriableRequest<C> + Unpin,
     T: Retry + Unpin,
@@ -64,25 +63,10 @@ where
     fn send(&self, client: C) -> Self::Response {
         RetriableResponse {
             client,
-            request: self,
+            request: self.inner,
             retry: T::new(),
             next: None,
             wait: None,
-        }
-    }
-}
-
-impl<'a, R, T, C> RetriableRequest<C> for &'a WithBackoff<R, T>
-where
-    R: RetriableRequest<C> + Unpin,
-    T: Retry + Unpin,
-    C: Clone,
-{
-    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
-        if let Some(err) = error.as_inner() {
-            self.inner.should_retry(err, next_interval)
-        } else {
-            false
         }
     }
 }
@@ -93,7 +77,7 @@ where
     T: Retry,
 {
     client: C,
-    request: &'a WithBackoff<R, T>,
+    request: &'a R,
     retry: T,
     next: Option<R::Response>,
     wait: Option<T::Wait>,
@@ -104,7 +88,7 @@ where
     R: RetriableRequest<C>,
     T: Retry,
 {
-    unsafe_pinned!(request: &'a WithBackoff<R, T>);
+    unsafe_pinned!(request: &'a R);
     unsafe_pinned!(retry: T);
     unsafe_pinned!(next: Option<R::Response>);
     unsafe_pinned!(wait: Option<T::Wait>);
@@ -145,7 +129,7 @@ where
 
         if self.as_mut().next().as_pin_mut().is_none() {
             let request = &self.as_ref().request;
-            let next = request.inner.send(self.client.clone());
+            let next = request.send(self.client.clone());
             self.as_mut().next().set(Some(next));
         }
 
@@ -179,12 +163,11 @@ where
     C: Clone,
 {
     fn next_wait(mut self: Pin<&mut Self>, err: R::Error) -> Result<T::Wait, RetryError<R::Error>> {
-        let err = RetryError::from_err(err);
         let next = self.as_mut().retry().next_backoff()?;
         if self.as_ref().request.should_retry(&err, next) {
             Ok(self.as_ref().retry.wait(next))
         } else {
-            Err(err)
+            Err(RetryError::from_err(err))
         }
     }
 }
@@ -192,11 +175,12 @@ where
 #[cfg(all(test, feature = "std-future-test"))]
 mod test {
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
 
     use ::tokio::runtime::current_thread::block_on_all;
     use futures_util::{future, try_future::TryFutureExt};
 
-    use super::*;
+    use super::WithBackoff;
     use crate::prelude::*;
     use crate::response::{Response, ResponseStdFutureObj};
 
@@ -257,9 +241,8 @@ mod test {
             current: AtomicUsize::new(1),
             end: 5,
         };
-        let req = WithBackoff::with_retry(numbers);
-        let r = &req;
+        let req = WithBackoff::with_retry(&numbers);
 
-        assert_eq!(block_on(r.send(())).unwrap(), 5);
+        assert_eq!(block_on(req.send(())).unwrap(), 5);
     }
 }
