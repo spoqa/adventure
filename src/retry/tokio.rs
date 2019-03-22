@@ -3,9 +3,9 @@ use std::time::{Duration, Instant};
 
 use tokio_timer::Delay as DelayImpl;
 
-use super::{Backoff, BackoffError, Retry, RetryError};
+use super::BackoffError;
 use crate::compat::{Compat, Poll, Waker};
-use crate::request::{Request, RetriableRequest};
+use crate::request::Request;
 use crate::response::Response;
 
 pub struct Delay {
@@ -19,16 +19,6 @@ impl Delay {
         Delay {
             inner: Compat::new(delay),
         }
-    }
-}
-
-impl<C> Request<C> for Duration {
-    type Ok = ();
-    type Error = BackoffError;
-    type Response = Delay;
-
-    fn into_response(self, _client: C) -> Self::Response {
-        Delay::expires_in(self)
     }
 }
 

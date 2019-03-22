@@ -21,12 +21,14 @@ pub use backoff::{backoff::Backoff, ExponentialBackoff};
 #[cfg(feature = "backoff-tokio")]
 pub use self::tokio::Delay;
 
-pub struct WithBackoff<R, B> {
+pub struct WithBackoff<R, B, D> {
     inner: R,
     backoff: Pin<Box<dyn Fn() -> B + 'static>>,
+    delay: Pin<Box<dyn Fn(Duration) -> D + 'static>>,
 }
 
-impl<R, B> WithBackoff<R, B> {
+#[cfg(feature = "backoff-tokio")]
+impl<R, B> WithBackoff<R, B, Delay> {
     fn with_retry<F>(req: R, backoff: F) -> Self
     where
         F: Fn() -> B + 'static,
@@ -34,31 +36,34 @@ impl<R, B> WithBackoff<R, B> {
         WithBackoff {
             inner: req,
             backoff: Box::pin(backoff),
+            delay: Box::pin(Delay::expires_in),
         }
     }
 }
 
-impl<R, B> Unpin for WithBackoff<R, B> where R: Unpin {}
+impl<R, B, D> Unpin for WithBackoff<R, B, D> where R: Unpin {}
 
-impl<'a, R, B, C> Request<C> for &'a WithBackoff<R, B>
+impl<'a, R, B, D, C> Request<C> for &'a WithBackoff<R, B, D>
 where
     R: RetriableRequest<C>,
     B: Backoff + Unpin,
+    D: Response<Ok = (), Error = BackoffError>,
     C: Clone,
 {
     type Ok = R::Ok;
     type Error = RetryError<R::Error>;
-    type Response = RetriableResponse<'a, R, B, C>;
+    type Response = RetriableResponse<'a, R, B, D, C>;
 
     fn into_response(self, client: C) -> Self::Response {
         self.send(client)
     }
 }
 
-impl<'a, R, B, C> RepeatableRequest<C> for &'a WithBackoff<R, B>
+impl<'a, R, B, D, C> RepeatableRequest<C> for &'a WithBackoff<R, B, D>
 where
     R: RetriableRequest<C>,
     B: Backoff + Unpin,
+    D: Response<Ok = (), Error = BackoffError>,
     C: Clone,
 {
     fn send(&self, client: C) -> Self::Response {
@@ -72,10 +77,11 @@ where
     }
 }
 
-impl<'a, R, B, C> RetriableRequest<C> for &'a WithBackoff<R, B>
+impl<'a, R, B, D, C> RetriableRequest<C> for &'a WithBackoff<R, B, D>
 where
     R: RetriableRequest<C>,
     B: Backoff + Unpin,
+    D: Response<Ok = (), Error = BackoffError>,
     C: Clone,
 {
     fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
@@ -87,40 +93,42 @@ where
     }
 }
 
-pub struct RetriableResponse<'a, R, B, C>
+pub struct RetriableResponse<'a, R, B, D, C>
 where
     R: RetriableRequest<C>,
 {
     client: C,
-    request: &'a WithBackoff<R, B>,
+    request: &'a WithBackoff<R, B, D>,
     backoff: B,
     next: Option<R::Response>,
-    wait: Option<Delay>,
+    wait: Option<D>,
 }
 
-impl<'a, R, B, C> RetriableResponse<'a, R, B, C>
+impl<'a, R, B, D, C> RetriableResponse<'a, R, B, D, C>
 where
     R: RetriableRequest<C>,
 {
-    unsafe_pinned!(request: &'a WithBackoff<R, B>);
+    unsafe_pinned!(request: &'a WithBackoff<R, B, D>);
     unsafe_pinned!(backoff: B);
     unsafe_pinned!(next: Option<R::Response>);
-    unsafe_pinned!(wait: Option<Delay>);
+    unsafe_pinned!(wait: Option<D>);
 }
 
-impl<'a, R, B, C> Unpin for RetriableResponse<'a, R, B, C>
+impl<'a, R, B, D, C> Unpin for RetriableResponse<'a, R, B, D, C>
 where
     R: RetriableRequest<C> + Unpin,
     R::Response: Unpin,
     B: Unpin,
+    D: Unpin,
     C: Unpin,
 {
 }
 
-impl<'a, R, B, C> Response for RetriableResponse<'a, R, B, C>
+impl<'a, R, B, D, C> Response for RetriableResponse<'a, R, B, D, C>
 where
     R: RetriableRequest<C>,
     B: Backoff + Unpin,
+    D: Response<Ok = (), Error = BackoffError>,
     C: Clone,
 {
     type Ok = R::Ok;
@@ -169,13 +177,14 @@ where
     }
 }
 
-impl<'a, R, B, C> RetriableResponse<'a, R, B, C>
+impl<'a, R, B, D, C> RetriableResponse<'a, R, B, D, C>
 where
     R: RetriableRequest<C>,
     B: Backoff + Unpin,
+    D: Response<Ok = (), Error = BackoffError>,
     C: Clone,
 {
-    fn next_wait(mut self: Pin<&mut Self>, err: R::Error) -> Result<Delay, RetryError<R::Error>> {
+    fn next_wait(mut self: Pin<&mut Self>, err: R::Error) -> Result<D, RetryError<R::Error>> {
         let next = self
             .as_mut()
             .backoff()
@@ -183,7 +192,7 @@ where
             .ok_or_else(BackoffError::timeout)?;
         let err = RetryError::from_err(err);
         if self.as_ref().request.should_retry(&err, next) {
-            Ok(Delay::expires_in(next))
+            Ok((self.as_ref().request.delay)(next))
         } else {
             Err(err)
         }
