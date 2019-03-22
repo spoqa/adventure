@@ -95,10 +95,10 @@ pub struct Waker {
 
 impl Waker {
     pub unsafe fn blank() -> Waker {
-        if cfg!(all(feature = "future01", not(feature = "std-future"))) {
+        if cfg!(all(feature = "futures01", not(feature = "std-future"))) {
             Waker { _impl: () }
         } else {
-            panic!("")
+            panic!("Using stub waker with std::future is invalid. Try std::task::Waker instead.")
         }
     }
 
