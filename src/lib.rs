@@ -13,6 +13,7 @@ pub mod prelude;
 pub mod request;
 pub mod response;
 
+mod adaptor;
 mod paginator;
 
 #[cfg(test)]

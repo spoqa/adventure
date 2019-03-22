@@ -33,6 +33,14 @@ mod internal_futures01 {
         }
     }
 
+    pub(crate) fn convert_std_to_01<T, E>(poll: Poll<Result<T, E>>) -> Poll01<T, E> {
+        match poll {
+            Poll::Ready(Ok(i)) => Ok(Async::Ready(i)),
+            Poll::Ready(Err(e)) => Err(e),
+            Poll::Pending => Ok(Async::NotReady),
+        }
+    }
+
     #[cfg(feature = "std-future")]
     type Wrap<T> = crate::response::ResponseStdFuture<futures_util::compat::Compat01As03<T>>;
 
@@ -77,5 +85,4 @@ mod internal_futures01 {
             convert_01_to_std(Future01::poll(self.inner()))
         }
     }
-
 }
