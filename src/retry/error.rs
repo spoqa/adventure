@@ -33,6 +33,20 @@ impl<E: StdError + 'static> StdError for RetryError<E> {
 }
 
 impl<E> RetryError<E> {
+    pub fn from_err(e: E) -> Self {
+        RetryError {
+            inner: RetryErrorKind::Inner(e),
+        }
+    }
+
+    pub fn as_inner(&self) -> Option<&E> {
+        if let RetryErrorKind::Inner(e) = &self.inner {
+            Some(e)
+        } else {
+            None
+        }
+    }
+
     pub fn into_inner(self) -> Option<E> {
         if let RetryErrorKind::Inner(e) = self.inner {
             Some(e)
@@ -54,6 +68,14 @@ impl<E> RetryError<E> {
             e.is_shutdown()
         } else {
             false
+        }
+    }
+
+    pub fn and_then<F, R>(self, f: F) -> RetryError<R> where F: FnOnce(E) -> RetryError<R> {
+        use RetryErrorKind::*;
+        match self.inner {
+            Inner(e) => f(e),
+            Backoff(e) => RetryError { inner: Backoff(e) },
         }
     }
 }

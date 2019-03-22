@@ -4,12 +4,12 @@ mod tokio;
 mod util;
 
 use std::pin::Pin;
+use std::time::Duration;
 
 use pin_utils::unsafe_pinned;
 
-use self::util::Waiting;
 use crate::compat::{Poll, Waker};
-use crate::request::{PagedRequest, Request};
+use crate::request::{PagedRequest, RepeatableRequest, Request, RetriableRequest};
 use crate::response::Response;
 
 pub use self::{
@@ -19,112 +19,109 @@ pub use self::{
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
 #[cfg(feature = "backoff-tokio")]
-pub use self::tokio::{BackoffTimer, Delay};
+pub use self::tokio::Delay;
 
-pub struct WithBackoff<R, T> {
+pub struct WithBackoff<R, B> {
     inner: R,
-    retry: T,
+    backoff: Pin<Box<dyn Fn() -> B + 'static>>,
 }
 
-impl<R, T> WithBackoff<R, T> {
-    fn with_retry(req: R, retry: T) -> Self {
-        WithBackoff { inner: req, retry }
+impl<R, B> WithBackoff<R, B> {
+    fn with_retry<F>(req: R, backoff: F) -> Self
+    where
+        F: Fn() -> B + 'static,
+    {
+        WithBackoff {
+            inner: req,
+            backoff: Box::pin(backoff),
+        }
     }
 }
 
-impl<R, T> From<R> for WithBackoff<R, T>
-where
-    T: Default,
-{
-    fn from(req: R) -> Self {
-        Self::with_retry(req, Default::default())
-    }
-}
+impl<R, B> Unpin for WithBackoff<R, B> where R: Unpin {}
 
-impl<R, T> Unpin for WithBackoff<R, T>
+impl<'a, R, B, C> Request<C> for &'a WithBackoff<R, B>
 where
-    R: Unpin,
-    T: Unpin,
-{
-}
-
-impl<R, T, C> Request<C> for WithBackoff<R, T>
-where
-    R: Request<C> + Clone + Unpin,
-    T: Retry + Unpin,
-    T::Backoff: Unpin,
-    T::Wait: Unpin,
-    C: Clone + Unpin,
+    R: RetriableRequest<C>,
+    B: Backoff + Unpin,
+    C: Clone,
 {
     type Ok = R::Ok;
     type Error = RetryError<R::Error>;
-    type Response = RetriableResponse<R, C, T>;
+    type Response = RetriableResponse<'a, R, B, C>;
 
+    fn into_response(self, client: C) -> Self::Response {
+        self.send(client)
+    }
+}
+
+impl<'a, R, B, C> RepeatableRequest<C> for &'a WithBackoff<R, B>
+where
+    R: RetriableRequest<C>,
+    B: Backoff + Unpin,
+    C: Clone,
+{
     fn send(&self, client: C) -> Self::Response {
         RetriableResponse {
             client,
-            request: self.inner.clone(),
-            timer: self.retry.generate(),
+            request: self,
+            backoff: (self.backoff)(),
             next: None,
             wait: None,
         }
     }
 }
 
-impl<R, T, C> PagedRequest<C> for WithBackoff<R, T>
+impl<'a, R, B, C> RetriableRequest<C> for &'a WithBackoff<R, B>
 where
-    R: PagedRequest<C> + Clone + Unpin,
-    T: Retry + Unpin,
-    T::Backoff: Unpin,
-    T::Wait: Unpin,
-    C: Clone + Unpin,
+    R: RetriableRequest<C>,
+    B: Backoff + Unpin,
+    C: Clone,
 {
-    fn advance(&mut self, response: &Self::Ok) -> bool {
-        self.inner.advance(response)
+    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+        if let Some(err) = error.as_inner() {
+            self.inner.should_retry(err, next_interval)
+        } else {
+            false
+        }
     }
 }
 
-pub struct RetriableResponse<R, C, T>
+pub struct RetriableResponse<'a, R, B, C>
 where
-    R: Request<C>,
-    T: Retry,
+    R: RetriableRequest<C>,
 {
     client: C,
-    request: R,
-    timer: T::Backoff,
+    request: &'a WithBackoff<R, B>,
+    backoff: B,
     next: Option<R::Response>,
-    wait: Option<Waiting<T::Wait>>,
+    wait: Option<Delay>,
 }
 
-impl<R, C, T> RetriableResponse<R, C, T>
+impl<'a, R, B, C> RetriableResponse<'a, R, B, C>
 where
-    R: Request<C>,
-    T: Retry,
+    R: RetriableRequest<C>,
 {
-    unsafe_pinned!(timer: T::Backoff);
-
+    unsafe_pinned!(request: &'a WithBackoff<R, B>);
+    unsafe_pinned!(backoff: B);
     unsafe_pinned!(next: Option<R::Response>);
-
-    unsafe_pinned!(wait: Option<Waiting<T::Wait>>);
+    unsafe_pinned!(wait: Option<Delay>);
 }
 
-impl<R, C, T> Unpin for RetriableResponse<R, C, T>
+impl<'a, R, B, C> Unpin for RetriableResponse<'a, R, B, C>
 where
-    R: Request<C> + Unpin,
+    R: RetriableRequest<C> + Unpin,
+    R::Response: Unpin,
+    B: Unpin,
     C: Unpin,
-    T: Retry,
-    T::Backoff: Unpin,
-    T::Wait: Unpin,
 {
 }
 
-impl<R, C, T> Response for RetriableResponse<R, C, T>
+impl<'a, R, B, C> Response for RetriableResponse<'a, R, B, C>
 where
-    R: Request<C>,
+    R: RetriableRequest<C>,
+    B: Backoff + Unpin,
     C: Clone,
-    T: Retry,
-    T::Backoff: Unpin,
-    T::Wait: Unpin,
 {
     type Ok = R::Ok;
     type Error = RetryError<R::Error>;
@@ -145,7 +142,7 @@ where
 
         if self.as_mut().next().as_pin_mut().is_none() {
             let request = &self.as_ref().request;
-            let next = request.send(self.client.clone());
+            let next = request.inner.send(self.client.clone());
             self.as_mut().next().set(Some(next));
         }
 
@@ -159,11 +156,36 @@ where
             Poll::Pending => Poll::Pending,
             Poll::Ready(Ok(resp)) => Poll::Ready(Ok(resp)),
             Poll::Ready(Err(e)) => {
-                let w = T::wait(self.as_mut().timer().get_mut());
                 self.as_mut().next().set(None);
-                self.as_mut().wait().set(Some(w.into()));
-                self.poll(waker)
+                match self.as_mut().next_wait(e) {
+                    Ok(w) => {
+                        self.as_mut().wait().set(Some(w));
+                        self.poll(waker)
+                    }
+                    Err(e) => Poll::Ready(Err(e)),
+                }
             }
+        }
+    }
+}
+
+impl<'a, R, B, C> RetriableResponse<'a, R, B, C>
+where
+    R: RetriableRequest<C>,
+    B: Backoff + Unpin,
+    C: Clone,
+{
+    fn next_wait(mut self: Pin<&mut Self>, err: R::Error) -> Result<Delay, RetryError<R::Error>> {
+        let next = self
+            .as_mut()
+            .backoff()
+            .next_backoff()
+            .ok_or_else(BackoffError::timeout)?;
+        let err = RetryError::from_err(err);
+        if self.as_ref().request.should_retry(&err, next) {
+            Ok(Delay::expires_in(next))
+        } else {
+            Err(err)
         }
     }
 }
@@ -199,18 +221,30 @@ mod test {
 
     type Resp = ResponseStdFutureObj<'static, usize, String>;
 
-    impl Request<()> for Numbers {
+    impl<C> Request<C> for Numbers {
         type Ok = usize;
         type Error = String;
         type Response = Resp;
 
-        fn send(&self, client: ()) -> Self::Response {
+        fn into_response(self, client: C) -> Self::Response {
+            self.send(client)
+        }
+    }
+
+    impl<C> RepeatableRequest<C> for Numbers {
+        fn send(&self, _client: C) -> Self::Response {
             let i = self.current.fetch_add(1, Ordering::SeqCst);
             if i < self.end {
                 ResponseStdFutureObj::new(future::err(format!("{} tried", i)))
             } else {
                 ResponseStdFutureObj::new(future::ok(i))
             }
+        }
+    }
+
+    impl<C> RetriableRequest<C> for Numbers {
+        fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+            true
         }
     }
 
@@ -227,8 +261,9 @@ mod test {
             current: AtomicUsize::new(1),
             end: 5,
         };
-        let req = WithBackoff::with_retry(numbers, BackoffTimer);
+        let req = WithBackoff::with_retry(numbers, ExponentialBackoff::default);
+        let r = &req;
 
-        assert_eq!(block_on(req.send(())).unwrap(), 5);
+        assert_eq!(block_on(r.send(())).unwrap(), 5);
     }
 }

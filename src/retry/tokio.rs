@@ -3,24 +3,10 @@ use std::time::{Duration, Instant};
 
 use tokio_timer::Delay as DelayImpl;
 
-use super::{Backoff, BackoffError, ExponentialBackoff, Retry};
+use super::{Backoff, BackoffError, Retry, RetryError};
 use crate::compat::{Compat, Poll, Waker};
+use crate::request::{Request, RetriableRequest};
 use crate::response::Response;
-
-pub struct BackoffTimer;
-
-impl Retry for BackoffTimer {
-    type Backoff = ExponentialBackoff;
-    type Wait = Delay;
-
-    fn generate(&self) -> Self::Backoff {
-        ExponentialBackoff::default()
-    }
-
-    fn wait(backoff: &mut Self::Backoff) -> Option<Self::Wait> {
-        dbg!(backoff.next_backoff()).map(Delay::expires_in)
-    }
-}
 
 pub struct Delay {
     inner: Compat<DelayImpl>,
@@ -33,6 +19,16 @@ impl Delay {
         Delay {
             inner: Compat::new(delay),
         }
+    }
+}
+
+impl<C> Request<C> for Duration {
+    type Ok = ();
+    type Error = BackoffError;
+    type Response = Delay;
+
+    fn into_response(self, _client: C) -> Self::Response {
+        Delay::expires_in(self)
     }
 }
 

@@ -4,5 +4,5 @@
 //! to access the various traits and methods mostly will be used.
 
 pub use crate::adaptor::ResponseExt;
-pub use crate::request::{PagedRequest, Request};
+pub use crate::request::{PagedRequest, RepeatableRequest, Request, RetriableRequest};
 pub use crate::response::Response;

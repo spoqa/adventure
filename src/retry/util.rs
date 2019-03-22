@@ -1,15 +1,16 @@
 use std::pin::Pin;
 
-use super::{Backoff, error::BackoffError};
+use super::{Backoff, BackoffError, RetryError};
 use crate::compat::{Poll, Waker};
+use crate::request::RetriableRequest;
 use crate::response::Response;
 
 pub trait Retry {
-    type Backoff: Backoff;
     type Wait: Response<Ok = (), Error = BackoffError>;
 
-    fn generate(&self) -> Self::Backoff;
-    fn wait(backoff: &mut Self::Backoff) -> Option<Self::Wait>;
+    fn wait(
+        &mut self,
+    ) -> Result<Self::Wait, BackoffError>;
 }
 
 pub(super) struct Waiting<W> {
