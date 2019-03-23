@@ -1,6 +1,12 @@
 0.2.0 (not released)
 --------------------
 
+### Breaking Changes
+
+ - `BaseRequest` is splitted from `Request`, and `RepeatableRequest` does not
+   extend `Request`. `Request` and `RepeatableRequest` will inherit the same
+   base trait.
+
 ### New features
 
  - `RequestExt` trait is added in the prelude.

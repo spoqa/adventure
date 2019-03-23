@@ -1,11 +1,11 @@
 use std::time::Duration;
 
-use crate::repeat::{Repeat, RepeatableRequest};
-use crate::request::Request;
+use crate::repeat::Repeat;
+use crate::request::BaseRequest;
 use crate::response::Response;
-use crate::retry::{RetriableRequest, Retry, WithBackoff};
+use crate::retry::{Retry, Retrying};
 
-pub trait RequestExt<C> {
+pub trait RequestExt {
     fn repeat(self) -> Repeat<Self>
     where
         Self: Clone,
@@ -13,59 +13,25 @@ pub trait RequestExt<C> {
         Repeat::from(self)
     }
 
-    fn with_backoff<R>(self) -> WithBackoff<Self, R, C>
+    fn with_backoff<R>(self) -> Retrying<Self, R>
     where
-        Self: RetriableRequest<C> + Unpin + Sized,
+        Self: Unpin + Sized,
         R: Retry,
     {
-        WithBackoff::<Self, R, C>::new(self)
+        Retrying::new(self)
     }
 
-    fn with_backoff_if<F, R>(self, pred: F) -> WithBackoff<Retrying<Self, F>, R, C>
+    fn with_backoff_if<R, F, E>(self, pred: F) -> Retrying<Self, R, F>
     where
-        Self: RepeatableRequest<C> + Unpin + Sized,
+        Self: Unpin + Sized,
         R: Retry,
-        F: Fn(&Self, &<Self as Request<C>>::Error, Duration) -> bool,
+        F: Fn(&Self, &E, Duration) -> bool,
     {
-        WithBackoff::<_, R, C>::new(Retrying(self, pred))
+        Retrying::with_predicate(self, pred)
     }
 }
 
-impl<T, C> RequestExt<C> for T where T: Request<C> {}
-
-pub struct Retrying<R, F>(R, F);
-
-impl<R, F, C> Request<C> for Retrying<R, F>
-where
-    R: Request<C>,
-{
-    type Ok = R::Ok;
-    type Error = R::Error;
-    type Response = R::Response;
-
-    fn into_response(self, client: C) -> Self::Response {
-        self.0.into_response(client)
-    }
-}
-
-impl<R, F, C> RepeatableRequest<C> for Retrying<R, F>
-where
-    R: RepeatableRequest<C>,
-{
-    fn send(&self, client: C) -> Self::Response {
-        self.0.send(client)
-    }
-}
-
-impl<R, F, C> RetriableRequest<C> for Retrying<R, F>
-where
-    R: RepeatableRequest<C>,
-    F: Fn(&Self, &Self::Error, Duration) -> bool,
-{
-    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
-        (self.1)(self, error, next_interval)
-    }
-}
+impl<T> RequestExt for T where T: BaseRequest {}
 
 pub trait ResponseExt {
     fn into_future(self) -> IntoFuture<Self>

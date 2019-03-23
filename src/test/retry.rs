@@ -28,9 +28,12 @@ impl Clone for Numbers {
 
 type Resp = ResponseStdFutureObj<'static, usize, String>;
 
-impl<C> Request<C> for Numbers {
+impl BaseRequest for Numbers {
     type Ok = usize;
     type Error = String;
+}
+
+impl<C> Request<C> for Numbers {
     type Response = Resp;
 
     fn into_response(self, client: C) -> Self::Response {
@@ -39,6 +42,8 @@ impl<C> Request<C> for Numbers {
 }
 
 impl<C> RepeatableRequest<C> for Numbers {
+    type Response = Resp;
+
     fn send(&self, _client: C) -> Self::Response {
         let i = self.current.fetch_add(1, Ordering::SeqCst);
         if i < self.end {
@@ -69,7 +74,7 @@ fn retry_simple() {
         end: 5,
     };
     pin_mut!(numbers);
-    let req = numbers.with_backoff::<RetryBackoff>();
+    let res = numbers.with_backoff::<RetryBackoff>().into_response(());
 
-    assert_eq!(block_on(req.into_response(())).unwrap(), 5);
+    assert_eq!(block_on(res).unwrap(), 5);
 }

@@ -1,28 +1,23 @@
 use std::ops::Deref;
 use std::pin::Pin;
+use std::rc::Rc;
+use std::sync::Arc;
 
-use crate::request::Request;
+use crate::request::{BaseRequest, Request};
+use crate::response::Response;
 
-pub trait RepeatableRequest<C>: Request<C> {
+pub trait RepeatableRequest<C>: BaseRequest {
+    /// The type of corresponding responses of this request.
+    type Response: Response<Ok = Self::Ok, Error = Self::Error>;
+
     fn send(&self, client: C) -> Self::Response;
-}
-
-impl<R, C> Request<C> for &R
-where
-    R: RepeatableRequest<C>,
-{
-    type Ok = R::Ok;
-    type Error = R::Error;
-    type Response = R::Response;
-    fn into_response(self, client: C) -> Self::Response {
-        self.send(client)
-    }
 }
 
 impl<R, C> RepeatableRequest<C> for &R
 where
     R: RepeatableRequest<C>,
 {
+    type Response = R::Response;
     fn send(&self, client: C) -> Self::Response {
         (*self).send(client)
     }
@@ -32,21 +27,29 @@ impl<R, C> RepeatableRequest<C> for Box<R>
 where
     R: RepeatableRequest<C>,
 {
+    type Response = R::Response;
     fn send(&self, client: C) -> Self::Response {
         (**self).send(client)
     }
 }
 
-impl<P, C> Request<C> for Pin<P>
+impl<R, C> RepeatableRequest<C> for Rc<R>
 where
-    P: Deref,
-    <P as Deref>::Target: RepeatableRequest<C>,
+    R: RepeatableRequest<C>,
 {
-    type Ok = <<P as Deref>::Target as Request<C>>::Ok;
-    type Error = <<P as Deref>::Target as Request<C>>::Error;
-    type Response = <<P as Deref>::Target as Request<C>>::Response;
-    fn into_response(self, client: C) -> Self::Response {
-        self.send(client)
+    type Response = R::Response;
+    fn send(&self, client: C) -> Self::Response {
+        (**self).send(client)
+    }
+}
+
+impl<R, C> RepeatableRequest<C> for Arc<R>
+where
+    R: RepeatableRequest<C>,
+{
+    type Response = R::Response;
+    fn send(&self, client: C) -> Self::Response {
+        (**self).send(client)
     }
 }
 
@@ -55,8 +58,9 @@ where
     P: Deref,
     <P as Deref>::Target: RepeatableRequest<C>,
 {
+    type Response = <<P as Deref>::Target as RepeatableRequest<C>>::Response;
     fn send(&self, client: C) -> Self::Response {
-        <<P as Deref>::Target>::send(self, client)
+        (**self).send(client)
     }
 }
 
@@ -74,12 +78,18 @@ where
     }
 }
 
-impl<R, C> Request<C> for Repeat<R>
+impl<R> BaseRequest for Repeat<R>
 where
-    R: Request<C>,
+    R: BaseRequest,
 {
     type Ok = R::Ok;
     type Error = R::Error;
+}
+
+impl<R, C> Request<C> for Repeat<R>
+where
+    R: Request<C> + Clone,
+{
     type Response = R::Response;
 
     fn into_response(self, client: C) -> Self::Response {
@@ -91,7 +101,42 @@ impl<R, C> RepeatableRequest<C> for Repeat<R>
 where
     R: Request<C> + Clone,
 {
+    type Response = R::Response;
+
     fn send(&self, client: C) -> Self::Response {
-        self.clone().into_response(client)
+        self.inner.clone().into_response(client)
+    }
+}
+
+#[derive(Clone)]
+pub struct Oneshot<R> {
+    inner: R,
+}
+
+impl<R> From<R> for Oneshot<R>
+where
+    R: Clone,
+{
+    fn from(req: R) -> Self {
+        Oneshot { inner: req }
+    }
+}
+
+impl<R> BaseRequest for Oneshot<R>
+where
+    R: BaseRequest,
+{
+    type Ok = R::Ok;
+    type Error = R::Error;
+}
+
+impl<R, C> Request<C> for Oneshot<R>
+where
+    R: RepeatableRequest<C>,
+{
+    type Response = R::Response;
+
+    fn into_response(self, client: C) -> Self::Response {
+        self.inner.send(client)
     }
 }

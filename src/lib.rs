@@ -19,8 +19,6 @@ pub mod util;
 #[cfg(feature = "backoff")]
 pub mod retry;
 
-mod paginator;
-
 #[cfg(test)]
 mod test;
 

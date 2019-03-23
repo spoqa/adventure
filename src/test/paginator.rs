@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::{
     paginator::{PagedRequest, Paginator},
     repeat::RepeatableRequest,
-    request::Request,
+    request::{BaseRequest, Request},
 };
 
 struct MockClient<T> {
@@ -31,9 +31,12 @@ struct Numbers {
 
 macro_rules! test_cases {
     () => {
-        impl Request<&MockClient<Response>> for &Numbers {
+        impl BaseRequest for &Numbers {
             type Ok = usize;
             type Error = ();
+        }
+
+        impl Request<&MockClient<Response>> for &Numbers {
             type Response = Response;
 
             fn into_response(self, client: &MockClient<Response>) -> Self::Response {
@@ -42,6 +45,8 @@ macro_rules! test_cases {
         }
 
         impl RepeatableRequest<&MockClient<Response>> for &Numbers {
+            type Response = Response;
+
             fn send(&self, client: &MockClient<Response>) -> Self::Response {
                 MockClient::<Response>::send_request(client, self)
             }
