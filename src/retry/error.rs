@@ -70,17 +70,6 @@ impl<E> RetryError<E> {
             false
         }
     }
-
-    pub fn and_then<F, R>(self, f: F) -> RetryError<R>
-    where
-        F: FnOnce(E) -> RetryError<R>,
-    {
-        use RetryErrorKind::*;
-        match self.inner {
-            Inner(e) => f(e),
-            Backoff(e) => RetryError { inner: Backoff(e) },
-        }
-    }
 }
 
 impl<E> From<BackoffError> for RetryError<E> {

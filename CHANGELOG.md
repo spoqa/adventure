@@ -1,6 +1,10 @@
 0.2.0 (not released)
 --------------------
 
+### Breaking changes
+
+ - `RetryError::and_then` is removed.
+
  - If both of `futures01` and `std-future` features are enabled, `&Waker` in
    `Response::poll` will be not ignored even if it is polled from futures 0.1
    or goes into them. It will prevent a potential freezing bug.
