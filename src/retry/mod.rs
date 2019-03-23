@@ -13,6 +13,7 @@ use std::time::Duration;
 pub use self::util::RetryBackoff;
 
 use crate::repeat::RepeatableRequest;
+use crate::request::BaseRequest;
 
 pub use self::{
     error::{BackoffError, RetryError},
@@ -20,32 +21,32 @@ pub use self::{
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
-pub trait RetriableRequest<C>: RepeatableRequest<C> {
+pub trait RetriableRequest: BaseRequest {
     fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool;
 }
 
-impl<R, C> RetriableRequest<C> for &R
+impl<R> RetriableRequest for &R
 where
-    R: RetriableRequest<C>,
+    R: RetriableRequest,
 {
     fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
         (*self).should_retry(error, next_interval)
     }
 }
 
-impl<R, C> RetriableRequest<C> for Box<R>
+impl<R> RetriableRequest for Box<R>
 where
-    R: RetriableRequest<C>,
+    R: RetriableRequest,
 {
     fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
         (**self).should_retry(error, next_interval)
     }
 }
 
-impl<P, C> RetriableRequest<C> for Pin<P>
+impl<P> RetriableRequest for Pin<P>
 where
     P: Deref,
-    <P as Deref>::Target: RetriableRequest<C>,
+    <P as Deref>::Target: RetriableRequest,
 {
     fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
         <<P as Deref>::Target>::should_retry(self, error, next_interval)

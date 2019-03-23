@@ -1,14 +1,14 @@
-use std::pin::Pin;
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::time::Duration;
 
 use pin_utils::unsafe_pinned;
 
-use super::{error::RetryError, RetriableRequest, Retrying, RetriableResponse, Retry};
+use super::{error::RetryError, RetriableRequest, RetriableResponse, Retry, Retrying};
 use crate::repeat::RepeatableRequest;
+use crate::request::{BaseRequest, Request};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
-use crate::request::{BaseRequest, Request};
 
 #[doc(hidden)]
 pub trait FnRetry<C> {
@@ -29,7 +29,7 @@ where
 
 impl<R, C> FnRetry<C> for (R, ())
 where
-    R: RetriableRequest<C>,
+    R: RetriableRequest,
 {
     type Error = R::Error;
     fn call(&mut self, err: &Self::Error, next_interval: Duration) -> bool {
@@ -37,7 +37,10 @@ where
     }
 }
 
-impl<R, T> Retrying<R, T> {
+impl<R, T> Retrying<R, T>
+where
+    R: RetriableRequest,
+{
     pub(crate) fn new(req: R) -> Self {
         Retrying {
             inner: req,
@@ -47,7 +50,10 @@ impl<R, T> Retrying<R, T> {
     }
 }
 
-impl<R, T, F> Retrying<R, T, F> {
+impl<R, T, F> Retrying<R, T, F>
+where
+    T: Retry + Unpin,
+{
     pub(crate) fn with_predicate(req: R, pred: F) -> Self {
         Retrying {
             inner: req,

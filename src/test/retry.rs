@@ -9,7 +9,6 @@ use tokio::runtime::current_thread::block_on_all;
 
 use crate::prelude::*;
 use crate::response::{Response, ResponseStdFutureObj};
-use crate::retry::RetryBackoff;
 
 #[derive(Debug, Default)]
 pub(crate) struct Numbers {
@@ -54,7 +53,7 @@ impl<C> RepeatableRequest<C> for Numbers {
     }
 }
 
-impl<C> RetriableRequest<C> for Numbers {
+impl RetriableRequest for Numbers {
     fn should_retry(&self, _error: &Self::Error, _next_interval: Duration) -> bool {
         true
     }
@@ -74,7 +73,7 @@ fn retry_simple() {
         end: 5,
     };
     pin_mut!(numbers);
-    let res = numbers.with_backoff::<RetryBackoff>().into_response(());
+    let res = numbers.with_backoff().into_response(());
 
     assert_eq!(block_on(res).unwrap(), 5);
 }

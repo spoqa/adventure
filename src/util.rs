@@ -3,9 +3,14 @@ use std::time::Duration;
 use crate::repeat::Repeat;
 use crate::request::BaseRequest;
 use crate::response::Response;
-use crate::retry::{Retry, Retrying};
+#[cfg(feature = "backoff-tokio")]
+use crate::retry::RetryBackoff;
+use crate::retry::{RetriableRequest, Retrying};
 
 pub trait RequestExt {
+    type Ok;
+    type Error;
+
     fn repeat(self) -> Repeat<Self>
     where
         Self: Clone,
@@ -13,25 +18,31 @@ pub trait RequestExt {
         Repeat::from(self)
     }
 
-    fn with_backoff<R>(self) -> Retrying<Self, R>
+    #[cfg(feature = "backoff-tokio")]
+    fn with_backoff(self) -> Retrying<Self, RetryBackoff>
     where
-        Self: Unpin + Sized,
-        R: Retry,
+        Self: RetriableRequest + Sized,
     {
         Retrying::new(self)
     }
 
-    fn with_backoff_if<R, F, E>(self, pred: F) -> Retrying<Self, R, F>
+    #[cfg(feature = "backoff-tokio")]
+    fn with_backoff_if<F>(self, pred: F) -> Retrying<Self, RetryBackoff, F>
     where
-        Self: Unpin + Sized,
-        R: Retry,
-        F: Fn(&Self, &E, Duration) -> bool,
+        Self: Sized,
+        F: Fn(&Self, &Self::Error, Duration) -> bool,
     {
         Retrying::with_predicate(self, pred)
     }
 }
 
-impl<T> RequestExt for T where T: BaseRequest {}
+impl<T> RequestExt for T
+where
+    T: BaseRequest,
+{
+    type Ok = T::Ok;
+    type Error = T::Error;
+}
 
 pub trait ResponseExt {
     fn into_future(self) -> IntoFuture<Self>
