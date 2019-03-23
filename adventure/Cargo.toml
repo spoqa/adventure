@@ -1,0 +1,62 @@
+[package]
+workspace = ".."
+name = "adventure"
+version = "0.2.0-alpha.0"
+description = "Helps your great adventure for the various type of requests."
+repository = "https://github.com/spoqa/adventure"
+readme = "README.md"
+categories = [
+    "asynchronous",
+    "api-bindings",
+    "network-programming",
+    "rust-patterns",
+    "web-programming::http-client",
+]
+authors = ["Eunchong Yu <gracie@spoqa.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[features]
+default = ["backoff-tokio"]
+futures01 = ["futures"]
+backoff-tokio = ["futures01", "backoff", "tokio", "tokio-timer"]
+std-future = ["futures-core-preview", "futures-util-preview"]
+
+[dependencies]
+pin-utils = "0.1.0-alpha.4"
+
+[dependencies.backoff]
+version = "0.1.3"
+optional = true
+
+[dependencies.futures]
+version = "0.1.25"
+optional = true
+
+[dependencies.futures-core-preview]
+version = "0.3.0-alpha.13"
+optional = true
+
+[dependencies.futures-util-preview]
+version = "0.3.0-alpha.13"
+features = ["compat"]
+optional = true
+
+[dependencies.tokio]
+version = "0.1"
+optional = true
+
+[dependencies.tokio-timer]
+version = "0.2"
+optional = true
+
+[dev-dependencies]
+tokio = "0.1"
+reqwest = "0.9"
+
+[dev-dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[package.metadata.docs.rs]
+features = ["std-future"]

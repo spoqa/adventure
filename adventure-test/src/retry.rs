@@ -1,14 +1,15 @@
-#![cfg(feature = "std-future-test")]
-
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
+#[cfg(all(feature = "futures", not(feature = "std-future")))]
+use futures::future;
+#[cfg(feature = "std-future")]
 use futures_util::{future, try_future::TryFutureExt};
 use pin_utils::pin_mut;
 use tokio::runtime::current_thread::block_on_all;
 
-use crate::prelude::*;
-use crate::response::{Response, ResponseStdFutureObj};
+use adventure::prelude::*;
+use adventure::response::*;
 
 #[derive(Debug, Default)]
 pub(crate) struct Numbers {
@@ -25,7 +26,10 @@ impl Clone for Numbers {
     }
 }
 
+#[cfg(feature = "std-future")]
 type Resp = ResponseStdFutureObj<'static, usize, String>;
+#[cfg(all(feature = "futures", not(feature = "std-future")))]
+type Resp = ResponseFutureObj<'static, usize, String>;
 
 impl BaseRequest for Numbers {
     type Ok = usize;
@@ -46,9 +50,9 @@ impl<C> RepeatableRequest<C> for Numbers {
     fn send(&self, _client: C) -> Self::Response {
         let i = self.current.fetch_add(1, Ordering::SeqCst);
         if i < self.end {
-            ResponseStdFutureObj::new(future::err(format!("{} tried", i)))
+            Resp::new(future::err(format!("{} tried", i)))
         } else {
-            ResponseStdFutureObj::new(future::ok(i))
+            Resp::new(future::ok(i))
         }
     }
 }
@@ -63,7 +67,10 @@ fn block_on<R>(req: R) -> Result<R::Ok, R::Error>
 where
     R: Response + Unpin,
 {
-    block_on_all(req.into_future().compat())
+    let fut = req.into_future();
+    #[cfg(all(feature = "std-future", not(feature = "futures")))]
+    let fut = fut.compat();
+    block_on_all(fut)
 }
 
 #[test]

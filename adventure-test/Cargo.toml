@@ -1,0 +1,47 @@
+[package]
+name = "adventure-test"
+version = "0.1.0"
+authors = ["Eunchong Yu <gracie@spoqa.com>"]
+edition = "2018"
+publish = false
+
+[lib]
+doc = false
+
+[features]
+default = ["adventure/backoff-tokio", "futures"]
+std-future = ["adventure/std-future", "futures-core-preview", "futures-executor-preview", "futures-util-preview"]
+
+[dependencies]
+pin-utils = "0.1.0-alpha.4"
+
+[dependencies.adventure]
+path = "../adventure"
+
+[dependencies.futures]
+version = "0.1.25"
+optional = true
+
+[dependencies.futures-core-preview]
+version = "0.3.0-alpha.13"
+optional = true
+
+[dependencies.futures-util-preview]
+version = "0.3.0-alpha.13"
+features = ["compat"]
+optional = true
+
+[dependencies.futures-executor-preview]
+version = "0.3.0-alpha.13"
+optional = true
+
+[dependencies.tokio]
+version = "0.1"
+optional = true
+
+[dependencies.tokio-timer]
+version = "0.2"
+optional = true
+
+[dev-dependencies]
+tokio = "0.1"

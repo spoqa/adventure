@@ -89,9 +89,6 @@ pub mod util;
 #[cfg(feature = "backoff")]
 pub mod retry;
 
-#[cfg(test)]
-mod test;
-
 #[doc(inline)]
 pub use crate::{
     paginator::{PagedRequest, Paginator},

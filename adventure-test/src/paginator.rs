@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::{
+use adventure::{
     paginator::{PagedRequest, Paginator},
     repeat::RepeatableRequest,
     request::{BaseRequest, Request},
@@ -152,14 +152,14 @@ macro_rules! test_cases {
     };
 }
 
-#[cfg(all(feature = "futures01", not(feature = "std-future")))]
+#[cfg(all(feature = "futures", not(feature = "futures-util-preview")))]
 mod futures01 {
     use super::*;
 
     use futures::{future, Stream};
     use tokio::runtime::current_thread::block_on_all;
 
-    use crate::response::ResponseLocalFutureObj;
+    use adventure::response::ResponseLocalFutureObj;
 
     pub(super) type Response = ResponseLocalFutureObj<'static, usize, ()>;
 
@@ -197,7 +197,7 @@ mod futures01 {
     test_cases!();
 }
 
-#[cfg(feature = "std-future-test")]
+#[cfg(feature = "futures-util-preview")]
 mod std_futures {
     use super::*;
 
@@ -205,7 +205,7 @@ mod std_futures {
     use futures_executor::block_on;
     use futures_util::{future, stream::StreamExt, try_stream::TryStreamExt};
 
-    use crate::response::ResponseStdLocalFutureObj;
+    use adventure::response::ResponseStdLocalFutureObj;
 
     pub(super) type Response = ResponseStdLocalFutureObj<'static, usize, ()>;
 
