@@ -12,7 +12,8 @@
    exponential backoff.
  - Any type of `Response` can be converted into futures 0.1 `Future`, or
    `std::future::Future`.
- - Implementation of `Response` for pointer types are added.
+ - Implementation of `Request`, `Response`, and related traits for pointer
+   types are added.
 
 ### Bug fixes
 
