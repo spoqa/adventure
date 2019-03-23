@@ -18,6 +18,7 @@ edition = "2018"
 [features]
 default = ["backoff-tokio"]
 futures01 = ["futures"]
+futures01-test = ["futures", "reqwest"]
 backoff-tokio = ["futures01", "backoff", "tokio", "tokio-timer"]
 std-future = ["futures-core-preview", "futures-util-preview"]
 std-future-test = ["std-future", "backoff-tokio", "futures-executor-preview"]
@@ -47,6 +48,10 @@ optional = true
 version = "0.3.0-alpha.13"
 optional = true
 
+[dependencies.reqwest]
+version = "0.9"
+optional = true
+
 [dependencies.tokio]
 version = "0.1"
 optional = true
@@ -55,8 +60,12 @@ optional = true
 version = "0.2"
 optional = true
 
-[dev-dependencies.tokio]
-version = "0.1"
+[dev-dependencies]
+tokio = "0.1"
+
+[dev-dependencies.serde]
+version = "1.0"
+features = ["derive"]
 
 [package.metadata.docs.rs]
 features = ["std-future"]
