@@ -1,8 +1,10 @@
-use crate::request::{Request, RetriableRequest};
+use crate::request::{Request, RepeatableRequest, RetriableRequest};
 use crate::response::Response;
 use crate::retry::{Retry, WithBackoff};
 
 pub trait RequestExt<C> {
+    fn repeat(self) -> Repeat<Self> where Self: Clone;
+
     fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R, C>
     where
         Self: RetriableRequest<C> + Unpin + Sized,
@@ -13,12 +15,41 @@ impl<T, C> RequestExt<C> for T
 where
     T: Request<C>,
 {
+    fn repeat(self) -> Repeat<Self> where Self: Clone {
+        Repeat(self)
+    }
+
     fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R, C>
     where
         Self: RetriableRequest<C> + Unpin + Sized,
         R: Retry,
     {
         WithBackoff::<Self, R, C>::new(self)
+    }
+}
+
+#[derive(Clone)]
+pub struct Repeat<R>(R);
+
+impl<R, C> Request<C> for Repeat<R>
+where
+    R: Request<C>,
+{
+    type Ok = R::Ok;
+    type Error = R::Error;
+    type Response = R::Response;
+
+    fn into_response(self, client: C) -> Self::Response {
+        self.0.into_response(client)
+    }
+}
+
+impl<R, C> RepeatableRequest<C> for Repeat<R>
+where
+    R: Request<C> + Clone,
+{
+    fn send(&self, client: C) -> Self::Response {
+        self.clone().into_response(client)
     }
 }
 

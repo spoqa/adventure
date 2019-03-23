@@ -8,6 +8,8 @@
 ### New features
 
  - `RequestExt` trait is added in the prelude.
+ - `RequestExt::repeat` is added to transform a request implementing `Clone`
+   into a repeatable request.
  - `RequestExt::with_backoff` is added to provide retry behavior with
    exponential backoff.
  - Any type of `Response` can be converted into futures 0.1 `Future`, or
