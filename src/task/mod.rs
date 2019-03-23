@@ -25,6 +25,7 @@ mod internal_futures01 {
 
     use super::*;
 
+    #[cfg(not(feature = "std-future"))]
     pub(crate) fn convert_01_to_std<T, E>(poll: Poll01<T, E>) -> Poll<Result<T, E>> {
         match poll {
             Ok(Async::Ready(i)) => Poll::Ready(Ok(i)),
