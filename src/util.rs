@@ -5,25 +5,10 @@ use crate::response::Response;
 use crate::retry::{Retry, WithBackoff};
 
 pub trait RequestExt<C> {
-    fn repeat(self) -> Repeat<Self> where Self: Clone;
-
-    fn with_backoff<R>(self) -> WithBackoff<Self, R, C>
+    fn repeat(self) -> Repeat<Self>
     where
-        Self: RetriableRequest<C> + Unpin + Sized,
-        R: Retry;
-
-    fn with_backoff_if<F, R>(self, pred: F) -> WithBackoff<Retrying<Self, F>, R, C>
-    where
-        Self: RepeatableRequest<C> + Unpin + Sized,
-        R: Retry,
-        F: Fn(&Self, &Self::Error, Duration) -> bool;
-}
-
-impl<T, C> RequestExt<C> for T
-where
-    T: Request<C>,
-{
-    fn repeat(self) -> Repeat<Self> where Self: Clone {
+        Self: Clone,
+    {
         Repeat(self)
     }
 
@@ -44,6 +29,8 @@ where
         WithBackoff::<_, R, C>::new(Retrying(self, pred))
     }
 }
+
+impl<T, C> RequestExt<C> for T where T: Request<C> {}
 
 #[derive(Clone)]
 pub struct Repeat<R>(R);

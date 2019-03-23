@@ -4,8 +4,8 @@ use std::time::{Duration, Instant};
 use tokio_timer::Delay as DelayImpl;
 
 use super::BackoffError;
-use crate::task::{Compat, Poll, Waker};
 use crate::response::Response;
+use crate::task::{Compat, Poll, Waker};
 
 pub struct Delay {
     inner: Compat<DelayImpl>,

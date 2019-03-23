@@ -2,9 +2,9 @@ use std::pin::Pin;
 
 use pin_utils::unsafe_pinned;
 
-use crate::task::{Poll, Waker};
 use crate::request::PagedRequest;
 use crate::response::Response;
+use crate::task::{Poll, Waker};
 
 /// A stream over the pages that consists the entire set from the request.
 pub struct Paginator<C, R>
@@ -88,8 +88,8 @@ mod impl_futures01 {
     use futures::{Async, Poll, Stream};
 
     use super::Paginator;
-    use crate::task::Waker;
     use crate::request::PagedRequest;
+    use crate::task::Waker;
 
     impl<C, R> Stream for Paginator<C, R>
     where
@@ -119,8 +119,8 @@ mod impl_std {
     use futures_core::{task::Waker, Stream};
 
     use super::Paginator;
-    use crate::task::Poll;
     use crate::request::PagedRequest;
+    use crate::task::Poll;
 
     impl<C, R> Stream for Paginator<C, R>
     where
