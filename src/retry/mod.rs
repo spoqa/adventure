@@ -12,7 +12,7 @@ use pin_utils::unsafe_pinned;
 #[cfg(feature = "backoff-tokio")]
 pub use self::util::RetryBackoff;
 
-use crate::request::{PagedRequest, RepeatableRequest, Request, RetriableRequest};
+use crate::request::{RepeatableRequest, Request, RetriableRequest};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
@@ -22,26 +22,39 @@ pub use self::{
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
-pub struct WithBackoff<'a, R, T, C> {
-    inner: Pin<&'a R>,
+pub struct WithBackoff<R, T, C> {
+    inner: R,
     _phantom: PhantomData<(T, C)>,
 }
 
-impl<'a, R,T, C> WithBackoff<'a, R, T, C>
-where
-    R: Unpin,
-{
-    pub(crate) fn new(req: &'a R) -> Self {
+impl<R, T, C> WithBackoff<R, T, C> {
+    pub(crate) fn new(req: R) -> Self {
         WithBackoff {
-            inner: Pin::new(req),
+            inner: req,
             _phantom: PhantomData,
         }
     }
 }
 
-impl<'a, R, T, C> Unpin for WithBackoff<'a, R, T, C> where R: Unpin {}
+impl<R, T, C> Clone for WithBackoff<R, T, C>
+where
+    R: Clone,
+{
+    fn clone(&self) -> Self {
+        WithBackoff {
+            inner: self.inner.clone(),
+            _phantom: PhantomData,
+        }
+    }
 
-impl<'a, R, T, C> Request<C> for WithBackoff<'a, R, T, C>
+    fn clone_from(&mut self, source: &Self) {
+        self.inner = source.inner.clone();
+    }
+}
+
+impl<R, T, C> Unpin for WithBackoff<R, T, C> where R: Unpin {}
+
+impl<R, T, C> Request<C> for WithBackoff<R, T, C>
 where
     R: RetriableRequest<C>,
     T: Retry + Unpin,
@@ -49,20 +62,9 @@ where
 {
     type Ok = R::Ok;
     type Error = RetryError<R::Error>;
-    type Response = RetriableResponse<'a, R, T, C>;
+    type Response = RetriableResponse<R, T, C>;
 
     fn into_response(self, client: C) -> Self::Response {
-        self.send(client)
-    }
-}
-
-impl<'a, R, T, C> RepeatableRequest<C> for WithBackoff<'a, R, T, C>
-where
-    R: RetriableRequest<C>,
-    T: Retry + Unpin,
-    C: Clone,
-{
-    fn send(&self, client: C) -> Self::Response {
         RetriableResponse {
             client,
             request: self.inner,
@@ -73,30 +75,41 @@ where
     }
 }
 
-pub struct RetriableResponse<'a, R, T, C>
+impl<R, T, C> RepeatableRequest<C> for WithBackoff<R, T, C>
+where
+    R: RetriableRequest<C> + Clone,
+    T: Retry + Unpin,
+    C: Clone,
+{
+    fn send(&self, client: C) -> Self::Response {
+        self.clone().into_response(client)
+    }
+}
+
+pub struct RetriableResponse<R, T, C>
 where
     R: RetriableRequest<C>,
     T: Retry,
 {
     client: C,
-    request: Pin<&'a R>,
+    request: R,
     retry: T,
     next: Option<R::Response>,
     wait: Option<T::Wait>,
 }
 
-impl<'a, R, T, C> RetriableResponse<'a, R, T, C>
+impl<R, T, C> RetriableResponse<R, T, C>
 where
     R: RetriableRequest<C>,
     T: Retry,
 {
-    unsafe_pinned!(request: Pin<&'a R>);
+    unsafe_pinned!(request: R);
     unsafe_pinned!(retry: T);
     unsafe_pinned!(next: Option<R::Response>);
     unsafe_pinned!(wait: Option<T::Wait>);
 }
 
-impl<'a, R, T, C> Unpin for RetriableResponse<'a, R, T, C>
+impl<R, T, C> Unpin for RetriableResponse<R, T, C>
 where
     R: RetriableRequest<C> + Unpin,
     R::Response: Unpin,
@@ -106,7 +119,7 @@ where
 {
 }
 
-impl<'a, R, T, C> Response for RetriableResponse<'a, R, T, C>
+impl<R, T, C> Response for RetriableResponse<R, T, C>
 where
     R: RetriableRequest<C>,
     T: Retry + Unpin,
@@ -158,11 +171,10 @@ where
     }
 }
 
-impl<'a, R, T, C> RetriableResponse<'a, R, T, C>
+impl<R, T, C> RetriableResponse<R, T, C>
 where
     R: RetriableRequest<C>,
     T: Retry + Unpin,
-    C: Clone,
 {
     fn next_wait(mut self: Pin<&mut Self>, err: R::Error) -> Result<T::Wait, RetryError<R::Error>> {
         let next = self.as_mut().retry().next_backoff()?;

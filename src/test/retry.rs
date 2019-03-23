@@ -71,5 +71,5 @@ fn retry_simple() {
     pin_mut!(numbers);
     let req = numbers.with_backoff::<RetryBackoff>();
 
-    assert_eq!(block_on(req.send(())).unwrap(), 5);
+    assert_eq!(block_on(req.into_response(())).unwrap(), 5);
 }

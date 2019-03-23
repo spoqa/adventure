@@ -1,14 +1,22 @@
-use crate::request::{Request, RepeatableRequest, RetriableRequest};
+use std::time::Duration;
+
+use crate::request::{RepeatableRequest, Request, RetriableRequest};
 use crate::response::Response;
 use crate::retry::{Retry, WithBackoff};
 
 pub trait RequestExt<C> {
     fn repeat(self) -> Repeat<Self> where Self: Clone;
 
-    fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R, C>
+    fn with_backoff<R>(self) -> WithBackoff<Self, R, C>
     where
         Self: RetriableRequest<C> + Unpin + Sized,
         R: Retry;
+
+    fn with_backoff_if<F, R>(self, pred: F) -> WithBackoff<Retrying<Self, F>, R, C>
+    where
+        Self: RepeatableRequest<C> + Unpin + Sized,
+        R: Retry,
+        F: Fn(&Self, &Self::Error, Duration) -> bool;
 }
 
 impl<T, C> RequestExt<C> for T
@@ -19,12 +27,21 @@ where
         Repeat(self)
     }
 
-    fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R, C>
+    fn with_backoff<R>(self) -> WithBackoff<Self, R, C>
     where
         Self: RetriableRequest<C> + Unpin + Sized,
         R: Retry,
     {
         WithBackoff::<Self, R, C>::new(self)
+    }
+
+    fn with_backoff_if<F, R>(self, pred: F) -> WithBackoff<Retrying<Self, F>, R, C>
+    where
+        Self: RepeatableRequest<C> + Unpin + Sized,
+        R: Retry,
+        F: Fn(&Self, &<Self as Request<C>>::Error, Duration) -> bool,
+    {
+        WithBackoff::<_, R, C>::new(Retrying(self, pred))
     }
 }
 
@@ -50,6 +67,40 @@ where
 {
     fn send(&self, client: C) -> Self::Response {
         self.clone().into_response(client)
+    }
+}
+
+pub struct Retrying<R, F>(R, F);
+
+impl<R, F, C> Request<C> for Retrying<R, F>
+where
+    R: Request<C>,
+{
+    type Ok = R::Ok;
+    type Error = R::Error;
+    type Response = R::Response;
+
+    fn into_response(self, client: C) -> Self::Response {
+        self.0.into_response(client)
+    }
+}
+
+impl<R, F, C> RepeatableRequest<C> for Retrying<R, F>
+where
+    R: RepeatableRequest<C>,
+{
+    fn send(&self, client: C) -> Self::Response {
+        self.0.send(client)
+    }
+}
+
+impl<R, F, C> RetriableRequest<C> for Retrying<R, F>
+where
+    R: RepeatableRequest<C>,
+    F: Fn(&Self, &Self::Error, Duration) -> bool,
+{
+    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+        (self.1)(self, error, next_interval)
     }
 }
 
