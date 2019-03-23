@@ -1,18 +1,20 @@
-use std::marker::PhantomData;
-
 mod error;
 #[cfg(feature = "backoff-tokio")]
 mod tokio;
 mod util;
 
+use std::marker::PhantomData;
+use std::ops::Deref;
 use std::pin::Pin;
+use std::time::Duration;
 
 use pin_utils::unsafe_pinned;
 
 #[cfg(feature = "backoff-tokio")]
 pub use self::util::RetryBackoff;
 
-use crate::request::{RepeatableRequest, Request, RetriableRequest};
+use crate::repeat::RepeatableRequest;
+use crate::request::Request;
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
@@ -21,6 +23,38 @@ pub use self::{
     util::Retry,
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
+
+pub trait RetriableRequest<C>: RepeatableRequest<C> {
+    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool;
+}
+
+impl<R, C> RetriableRequest<C> for &R
+where
+    R: RetriableRequest<C>,
+{
+    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+        (*self).should_retry(error, next_interval)
+    }
+}
+
+impl<R, C> RetriableRequest<C> for Box<R>
+where
+    R: RetriableRequest<C>,
+{
+    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+        (**self).should_retry(error, next_interval)
+    }
+}
+
+impl<P, C> RetriableRequest<C> for Pin<P>
+where
+    P: Deref,
+    <P as Deref>::Target: RetriableRequest<C>,
+{
+    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+        <<P as Deref>::Target>::should_retry(self, error, next_interval)
+    }
+}
 
 pub struct WithBackoff<R, T, C> {
     inner: R,

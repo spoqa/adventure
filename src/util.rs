@@ -1,15 +1,16 @@
 use std::time::Duration;
 
-use crate::request::{RepeatableRequest, Request, RetriableRequest};
+use crate::repeat::{Repeat, RepeatableRequest};
+use crate::request::Request;
 use crate::response::Response;
-use crate::retry::{Retry, WithBackoff};
+use crate::retry::{RetriableRequest, Retry, WithBackoff};
 
 pub trait RequestExt<C> {
     fn repeat(self) -> Repeat<Self>
     where
         Self: Clone,
     {
-        Repeat(self)
+        Repeat::from(self)
     }
 
     fn with_backoff<R>(self) -> WithBackoff<Self, R, C>
@@ -31,31 +32,6 @@ pub trait RequestExt<C> {
 }
 
 impl<T, C> RequestExt<C> for T where T: Request<C> {}
-
-#[derive(Clone)]
-pub struct Repeat<R>(R);
-
-impl<R, C> Request<C> for Repeat<R>
-where
-    R: Request<C>,
-{
-    type Ok = R::Ok;
-    type Error = R::Error;
-    type Response = R::Response;
-
-    fn into_response(self, client: C) -> Self::Response {
-        self.0.into_response(client)
-    }
-}
-
-impl<R, C> RepeatableRequest<C> for Repeat<R>
-where
-    R: Request<C> + Clone,
-{
-    fn send(&self, client: C) -> Self::Response {
-        self.clone().into_response(client)
-    }
-}
 
 pub struct Retrying<R, F>(R, F);
 

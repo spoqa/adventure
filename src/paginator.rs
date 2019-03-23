@@ -1,10 +1,37 @@
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 
 use pin_utils::unsafe_pinned;
 
-use crate::request::PagedRequest;
+use crate::repeat::RepeatableRequest;
 use crate::response::Response;
 use crate::task::{Poll, Waker};
+
+/// A request able to send subsequent requests to enumerate the entire result.
+pub trait PagedRequest<C>: RepeatableRequest<C> {
+    /// Modify itself to retrive the next response, of return `false` if the
+    /// given response was the last one.
+    fn advance(&mut self, response: &Self::Ok) -> bool;
+}
+
+impl<R, C> PagedRequest<C> for Box<R>
+where
+    R: PagedRequest<C>,
+{
+    fn advance(&mut self, response: &Self::Ok) -> bool {
+        (**self).advance(response)
+    }
+}
+
+impl<P, C> PagedRequest<C> for Pin<P>
+where
+    P: DerefMut,
+    <P as Deref>::Target: PagedRequest<C> + Unpin,
+{
+    fn advance(&mut self, response: &Self::Ok) -> bool {
+        self.as_mut().get_mut().advance(response)
+    }
+}
 
 /// A stream over the pages that consists the entire set from the request.
 pub struct Paginator<C, R>
@@ -87,8 +114,7 @@ mod impl_futures01 {
 
     use futures::{Async, Poll, Stream};
 
-    use super::Paginator;
-    use crate::request::PagedRequest;
+    use super::{PagedRequest, Paginator};
     use crate::task::Waker;
 
     impl<C, R> Stream for Paginator<C, R>
@@ -118,8 +144,7 @@ mod impl_std {
 
     use futures_core::{task::Waker, Stream};
 
-    use super::Paginator;
-    use crate::request::PagedRequest;
+    use super::{PagedRequest, Paginator};
     use crate::task::Poll;
 
     impl<C, R> Stream for Paginator<C, R>

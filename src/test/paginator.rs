@@ -2,8 +2,9 @@ use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{
-    paginator::Paginator,
-    request::{PagedRequest, RepeatableRequest, Request},
+    paginator::{PagedRequest, Paginator},
+    repeat::RepeatableRequest,
+    request::Request,
 };
 
 struct MockClient<T> {

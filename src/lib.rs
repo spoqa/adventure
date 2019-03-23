@@ -8,7 +8,9 @@
 #![cfg_attr(feature = "std-future", feature(futures_api))]
 #![deny(rust_2018_idioms)]
 
+pub mod paginator;
 pub mod prelude;
+pub mod repeat;
 pub mod request;
 pub mod response;
 pub mod task;
@@ -24,7 +26,7 @@ mod test;
 
 #[doc(inline)]
 pub use crate::{
-    paginator::Paginator,
-    request::{PagedRequest, Request},
+    paginator::{PagedRequest, Paginator},
+    request::Request,
     response::Response,
 };
