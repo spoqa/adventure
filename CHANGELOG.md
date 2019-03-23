@@ -1,10 +1,6 @@
 0.2.0 (not released)
 --------------------
 
-### Breaking changes
-
- - `RetryError::and_then` is removed.
-
 ### New features
 
  - `RequestExt` trait is added in the prelude.
