@@ -1,0 +1,5 @@
+#!/bin/bash -e
+cargo fmt -- --check
+cargo test --all --examples
+cargo test --all --examples --no-default-features --features std-future-test
+cargo test --all --examples --all-features
