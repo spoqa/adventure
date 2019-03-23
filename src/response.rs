@@ -1,4 +1,5 @@
 //! A trait of responses and common adaptors.
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 
 use crate::task::{Poll, Waker};
@@ -18,6 +19,43 @@ pub trait Response {
 
     /// Poll this [`Response`].
     fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>>;
+}
+
+impl<P> Response for Pin<P>
+where
+    P: DerefMut + Unpin,
+    <P as Deref>::Target: Response,
+{
+    type Ok = <<P as Deref>::Target as Response>::Ok;
+    type Error = <<P as Deref>::Target as Response>::Error;
+    fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+        let p: Pin<&mut <P as Deref>::Target> = Pin::get_mut(self).as_mut();
+        Response::poll(p, w)
+    }
+}
+
+impl<'a, R: ?Sized> Response for &'a mut R
+where
+    R: Response + Unpin,
+{
+    type Ok = R::Ok;
+    type Error = R::Error;
+    fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+        let p: Pin<&mut R> = Pin::new(&mut **self);
+        Response::poll(p, w)
+    }
+}
+
+impl<R: ?Sized> Response for Box<R>
+where
+    R: Response + Unpin,
+{
+    type Ok = R::Ok;
+    type Error = R::Error;
+    fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+        let p: Pin<&mut R> = Pin::new(&mut **self);
+        Response::poll(p, w)
+    }
 }
 
 #[cfg(feature = "futures01")]
