@@ -7,11 +7,12 @@
 
 ### New features
 
+ - `RequestExt` trait is added in the prelude.
+ - `RequestExt::with_backoff` is added to provide retry behavior with
+   exponential backoff.
  - Any type of `Response` can be converted into futures 0.1 `Future`, or
    `std::future::Future`.
- - Add implementations of `Response` for pointer types.
- - Add `ResponseExt::with_backoff`, which provides retry behavior with
-   exponential backoff.
+ - Implementation of `Response` for pointer types are added.
 
 ### Bug fixes
 

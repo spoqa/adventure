@@ -5,4 +5,4 @@
 
 pub use crate::request::{PagedRequest, RepeatableRequest, Request, RetriableRequest};
 pub use crate::response::Response;
-pub use crate::util::ResponseExt;
+pub use crate::util::{RequestExt, ResponseExt};

@@ -1,29 +1,42 @@
+use crate::request::{Request, RetriableRequest};
 use crate::response::Response;
 use crate::retry::{Retry, WithBackoff};
 
-pub trait ResponseExt: Sized {
-    fn into_future(self) -> IntoFuture<Self>;
-
-    fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R>
+pub trait RequestExt<C> {
+    fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R, C>
     where
-        Self: Unpin,
+        Self: RetriableRequest<C> + Unpin + Sized,
         R: Retry;
+}
+
+impl<T, C> RequestExt<C> for T
+where
+    T: Request<C>,
+{
+    fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R, C>
+    where
+        Self: RetriableRequest<C> + Unpin + Sized,
+        R: Retry,
+    {
+        WithBackoff::<Self, R, C>::new(self)
+    }
+}
+
+pub trait ResponseExt {
+    fn into_future(self) -> IntoFuture<Self>
+    where
+        Self: Sized;
 }
 
 impl<T> ResponseExt for T
 where
     T: Response,
 {
-    fn into_future(self) -> IntoFuture<Self> {
-        IntoFuture(self)
-    }
-
-    fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R>
+    fn into_future(self) -> IntoFuture<Self>
     where
-        Self: Unpin,
-        R: Retry,
+        Self: Sized,
     {
-        WithBackoff::<Self, R>::new(self)
+        IntoFuture(self)
     }
 }
 

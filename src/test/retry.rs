@@ -4,11 +4,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use futures_util::{future, try_future::TryFutureExt};
+use pin_utils::pin_mut;
 use tokio::runtime::current_thread::block_on_all;
 
 use crate::prelude::*;
 use crate::response::{Response, ResponseStdFutureObj};
-use crate::retry::{RetryBackoff, WithBackoff};
+use crate::retry::RetryBackoff;
 
 #[derive(Debug, Default)]
 pub(crate) struct Numbers {
@@ -67,7 +68,8 @@ fn retry_simple() {
         current: AtomicUsize::new(1),
         end: 5,
     };
-    let req = Box::pin(numbers).with_backoff::<RetryBackoff>();
+    pin_mut!(numbers);
+    let req = numbers.with_backoff::<RetryBackoff>();
 
     assert_eq!(block_on(req.send(())).unwrap(), 5);
 }

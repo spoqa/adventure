@@ -22,12 +22,12 @@ pub use self::{
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
-pub struct WithBackoff<'a, R, T> {
+pub struct WithBackoff<'a, R, T, C> {
     inner: Pin<&'a R>,
-    _phantom: PhantomData<T>,
+    _phantom: PhantomData<(T, C)>,
 }
 
-impl<'a, R, T> WithBackoff<'a, R, T>
+impl<'a, R,T, C> WithBackoff<'a, R, T, C>
 where
     R: Unpin,
 {
@@ -39,9 +39,9 @@ where
     }
 }
 
-impl<'a, R, T> Unpin for WithBackoff<'a, R, T> where R: Unpin {}
+impl<'a, R, T, C> Unpin for WithBackoff<'a, R, T, C> where R: Unpin {}
 
-impl<'a, R, T, C> Request<C> for WithBackoff<'a, R, T>
+impl<'a, R, T, C> Request<C> for WithBackoff<'a, R, T, C>
 where
     R: RetriableRequest<C>,
     T: Retry + Unpin,
@@ -56,7 +56,7 @@ where
     }
 }
 
-impl<'a, R, T, C> RepeatableRequest<C> for WithBackoff<'a, R, T>
+impl<'a, R, T, C> RepeatableRequest<C> for WithBackoff<'a, R, T, C>
 where
     R: RetriableRequest<C>,
     T: Retry + Unpin,
