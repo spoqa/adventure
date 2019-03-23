@@ -1,7 +1,13 @@
 use crate::response::Response;
+use crate::retry::{Retry, WithBackoff};
 
 pub trait ResponseExt: Sized {
     fn into_future(self) -> IntoFuture<Self>;
+
+    fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R>
+    where
+        Self: Unpin,
+        R: Retry;
 }
 
 impl<T> ResponseExt for T
@@ -11,6 +17,14 @@ where
     fn into_future(self) -> IntoFuture<Self> {
         IntoFuture(self)
     }
+
+    fn with_backoff<'a, R>(&'a self) -> WithBackoff<'a, Self, R>
+    where
+        Self: Unpin,
+        R: Retry,
+    {
+        WithBackoff::<Self, R>::new(self)
+    }
 }
 
 pub struct IntoFuture<T>(T);
@@ -19,8 +33,8 @@ pub struct IntoFuture<T>(T);
 mod impl_futures01 {
     use futures::{Future as Future01, Poll as Poll01};
 
-    use crate::task::convert_std_to_01;
     use crate::response::Response;
+    use crate::task::convert_std_to_01;
 
     use super::IntoFuture;
 
@@ -128,8 +142,8 @@ mod impl_std {
 
     use futures_core::Future;
 
-    use crate::task::{Poll, Waker};
     use crate::response::Response;
+    use crate::task::{Poll, Waker};
 
     use super::IntoFuture;
 

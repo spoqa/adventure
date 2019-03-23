@@ -8,7 +8,7 @@ use tokio::runtime::current_thread::block_on_all;
 
 use crate::prelude::*;
 use crate::response::{Response, ResponseStdFutureObj};
-use crate::retry::WithBackoff;
+use crate::retry::{RetryBackoff, WithBackoff};
 
 #[derive(Debug, Default)]
 pub(crate) struct Numbers {
@@ -67,7 +67,7 @@ fn retry_simple() {
         current: AtomicUsize::new(1),
         end: 5,
     };
-    let req = WithBackoff::with_retry(&numbers);
+    let req = Box::pin(numbers).with_backoff::<RetryBackoff>();
 
     assert_eq!(block_on(req.send(())).unwrap(), 5);
 }

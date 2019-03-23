@@ -10,7 +10,7 @@ use std::pin::Pin;
 use pin_utils::unsafe_pinned;
 
 #[cfg(feature = "backoff-tokio")]
-use self::util::RetryBackoff;
+pub use self::util::RetryBackoff;
 
 use crate::request::{PagedRequest, RepeatableRequest, Request, RetriableRequest};
 use crate::response::Response;
@@ -27,12 +27,11 @@ pub struct WithBackoff<'a, R, T> {
     _phantom: PhantomData<T>,
 }
 
-#[cfg(feature = "backoff-tokio")]
-impl<'a, R> WithBackoff<'a, R, RetryBackoff>
+impl<'a, R, T> WithBackoff<'a, R, T>
 where
     R: Unpin,
 {
-    pub(crate) fn with_retry(req: &'a R) -> Self {
+    pub(crate) fn new(req: &'a R) -> Self {
         WithBackoff {
             inner: Pin::new(req),
             _phantom: PhantomData,
