@@ -96,3 +96,13 @@ fn retry_clone() {
     assert_eq!(block_on(cloned.send_once(())).unwrap(), 5);
 }
 
+#[test]
+fn retry_send() {
+    let numbers = Numbers {
+        current: AtomicUsize::new(1),
+        end: 5,
+    };
+    let res = (&numbers).retry().send(());
+
+    assert_eq!(block_on(res).unwrap(), 5);
+}

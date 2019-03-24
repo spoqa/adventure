@@ -125,6 +125,25 @@ where
     }
 }
 
+impl<R, T, B, F, C> Request<C> for Retrying<R, T, B, F>
+where
+    Self: RetryMethod<C, Response = R::Response> + Clone + Unpin,
+    R: Request<C>,
+    R::Response: Unpin,
+    C: Clone,
+{
+    type Response = Retrial<Self, C>;
+
+    fn send(&self, client: C) -> Self::Response {
+        Retrial {
+            client,
+            request: self.clone(),
+            next: None,
+            wait: None,
+        }
+    }
+}
+
 impl<R, T, B, F> Unpin for Retrying<R, T, B, F>
 where
     R: Unpin,

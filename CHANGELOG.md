@@ -10,9 +10,9 @@
 
 ### Bug fixes
 
- - The result of `RetriableRequest::retry` on will implement `Clone` if the
-   source request is implementing it. This makes applying other combinators on
-   the request much easier.
+ - The result of `RetriableRequest::retry` will implement `Clone` and
+   `Request<C>` if the source request is implementing `Clone`. This makes
+   applying other combinators on the request much easier.
 
 0.2.0 (March 24, 2019)
 --------------------
