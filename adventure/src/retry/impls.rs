@@ -5,6 +5,7 @@ use pin_utils::unsafe_pinned;
 
 use super::{error::RetryError, Backoff, ExponentialBackoff, RetriableRequest, Timer};
 use crate::oneshot::OneshotRequest;
+use crate::paginator::PagedRequest;
 use crate::request::{BaseRequest, Request};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
@@ -141,6 +142,15 @@ where
             next: None,
             wait: None,
         }
+    }
+}
+
+impl<R, T, B, F> PagedRequest for Retrying<R, T, B, F>
+where
+    R: PagedRequest,
+{
+    fn advance(&mut self, response: &Self::Ok) -> bool {
+        self.inner.advance(response)
     }
 }
 

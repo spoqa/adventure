@@ -46,3 +46,34 @@ where
         self.inner.clone().send_once(client)
     }
 }
+
+#[cfg(feature = "backoff")]
+mod impl_retry {
+    use std::time::Duration;
+
+    use super::Repeat;
+    use crate::retry::RetriableRequest;
+
+    impl<R> RetriableRequest for Repeat<R>
+    where
+        R: RetriableRequest,
+    {
+        fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+            self.inner.should_retry(error, next_interval)
+        }
+    }
+}
+
+mod impl_paginator {
+    use super::Repeat;
+    use crate::paginator::PagedRequest;
+
+    impl<R> PagedRequest for Repeat<R>
+    where
+        R: PagedRequest,
+    {
+        fn advance(&mut self, response: &Self::Ok) -> bool {
+            self.inner.advance(response)
+        }
+    }
+}

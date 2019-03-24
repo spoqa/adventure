@@ -13,6 +13,8 @@
  - The result of `RetriableRequest::retry` will implement `Clone` and
    `Request<C>` if the source request is implementing `Clone`. This makes
    applying other combinators on the request much easier.
+ - Forward implementations of request traits like `PagedRequest` are added for
+   request combinators, if their original request implements the same trait.
 
 0.2.0 (March 24, 2019)
 --------------------

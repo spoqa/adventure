@@ -59,3 +59,20 @@ where
         self.inner.send(client)
     }
 }
+
+#[cfg(feature = "backoff")]
+mod impl_retry {
+    use std::time::Duration;
+
+    use super::Oneshot;
+    use crate::retry::RetriableRequest;
+
+    impl<R> RetriableRequest for Oneshot<R>
+    where
+        R: RetriableRequest,
+    {
+        fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+            self.inner.should_retry(error, next_interval)
+        }
+    }
+}
