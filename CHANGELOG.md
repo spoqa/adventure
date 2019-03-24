@@ -1,4 +1,8 @@
-0.2.0 (not released)
+0.3.0 (not released)
+--------------------
+
+
+0.2.0 (March 24, 2019)
 --------------------
 
 ### Breaking Changes
