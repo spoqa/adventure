@@ -1,0 +1,20 @@
+[package]
+workspace = "../.."
+name = "adventure-rusoto-ecs"
+version = "0.1.0"
+description = "Adventure to rusoto_ecs"
+repository = "https://github.com/spoqa/adventure"
+categories = [
+    "asynchronous",
+    "api-bindings",
+    "network-programming",
+    "web-programming::http-client",
+]
+authors = ["Eunchong Yu <gracie@spoqa.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[dependencies]
+adventure = "0.3"
+rusoto_core = "0.37"
+rusoto_ecs = "0.37"
