@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use adventure::{
     oneshot::OneshotRequest,
-    paginator::{PagedRequest, Paginator},
+    paginator::PagedRequest,
     request::{BaseRequest, Request},
 };
 
@@ -70,7 +70,7 @@ macro_rules! test_cases {
                 current: AtomicUsize::new(1),
                 end: 5,
             };
-            let paginator = Paginator::new(&client, &numbers);
+            let paginator = (&numbers).paginate(&client);
 
             let responses = collect(paginator);
             assert_eq!(Ok(vec![1, 2, 3, 4, 5]), responses);
@@ -86,7 +86,7 @@ macro_rules! test_cases {
                 current: AtomicUsize::new(1),
                 end: 20,
             };
-            let paginator = Paginator::new(&client, &numbers);
+            let paginator = (&numbers).paginate(&client);
 
             let responses = collect(paginator);
             assert_eq!(Err(()), responses);
@@ -101,7 +101,7 @@ macro_rules! test_cases {
                 current: AtomicUsize::new(1),
                 end: 3,
             };
-            let mut paginator = Some(Paginator::new(&client, &numbers));
+            let mut paginator = Some((&numbers).paginate(&client));
 
             assert_eq!(block_on_next(&mut paginator), Some(Ok(1)));
             assert_eq!(numbers.current.load(Ordering::SeqCst), 2);
@@ -131,7 +131,7 @@ macro_rules! test_cases {
                 current: AtomicUsize::new(1),
                 end: 3,
             };
-            let mut paginator = Some(Paginator::new(&client, &numbers));
+            let mut paginator = Some((&numbers).paginate(&client));
 
             assert_eq!(block_on_next(&mut paginator), Some(Ok(1)));
             assert_eq!(numbers.current.load(Ordering::SeqCst), 2);

@@ -8,6 +8,8 @@
  - `RepeatableRequest` is renamed to `Request`, and extends `BaseRequest`
    instead `OneshotRequest`. Therefore, both of `Request` and `OneshotRequest`
    will have the same base trait.
+ - Object safety of `Request` and `Response` is broken, as a consequence of
+   addition of utility methods.
  - `std-futures` feature is renamed to `std-future`.
 
 ### New features
@@ -16,6 +18,7 @@
    implementing `Clone` to be repeatable.
  - `RetriableRequest` is added to provide retrial behavior with a customizable
    strategy, like exponential backoff.
+ - `PagedRequest::paginate` is added.
  - `Response::into_future` is added to convert into futures 0.1 `Future`, or
    `std::future::Future`.
  - Implementation of `BaseRequest`, `Response`, and related traits for pointer

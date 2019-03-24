@@ -12,6 +12,13 @@ pub trait PagedRequest<C>: Request<C> {
     /// Modify itself to retrive the next response, of return `false` if the
     /// given response was the last one.
     fn advance(&mut self, response: &Self::Ok) -> bool;
+
+    fn paginate(self, client: C) -> Paginator<C, Self>
+    where
+        Self: Sized,
+    {
+        Paginator::new(client, self)
+    }
 }
 
 impl<R, C> PagedRequest<C> for Box<R>
