@@ -7,10 +7,10 @@ use std::sync::Arc;
 use crate::oneshot::Oneshot;
 use crate::response::Response;
 
-#[cfg(all(feature = "backoff", feature = "tokio-timer"))]
-use crate::retry::TokioTimer;
 #[cfg(feature = "backoff")]
 use crate::retry::{Backoff, RetrialPredicate, Retrying, Timer};
+#[cfg(all(feature = "backoff", feature = "tokio-timer"))]
+use crate::retry::{ExponentialBackoff, RetryingTokio};
 
 /// Trait to represent types of the request, and their expected output and
 /// error types.
@@ -79,22 +79,27 @@ pub trait Request<C>: BaseRequest {
         Oneshot::from(self)
     }
 
+    /// Wrap this request to retry if the given predicate returns `true`.
+    ///
+    /// It should be called within the tokio execution context,
+    /// because the default timer is implemented using [`tokio_timer`].
     #[cfg(all(feature = "backoff", feature = "tokio-timer"))]
-    fn retry_if<F>(self, pred: F) -> Retrying<Self, TokioTimer, F>
+    fn retry_if<F>(self, pred: F) -> RetryingTokio<Self, ExponentialBackoff, F>
     where
         Self: Sized,
         F: RetrialPredicate<Self>,
     {
-        Retrying::from_default(self).with_predicate(pred)
+        RetryingTokio::from_default(self).with_predicate(pred)
     }
 
+    /// Wrap this request to retry with customizable options, including the timer implementation.
     #[cfg(feature = "backoff")]
-    fn retry_with_config<T, F, B>(self, timer: T, pred: F, backoff: B) -> Retrying<Self, T, F, B>
+    fn retry_with_config<T, B, F>(self, timer: T, pred: F, backoff: B) -> Retrying<Self, T, B, F>
     where
         Self: Sized,
         T: Timer + Unpin,
-        F: RetrialPredicate<Self>,
         B: Backoff,
+        F: RetrialPredicate<Self>,
     {
         Retrying::new(self, timer, backoff).with_predicate(pred)
     }

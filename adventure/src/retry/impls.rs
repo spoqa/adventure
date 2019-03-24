@@ -50,15 +50,16 @@ where
     }
 }
 
+/// Request for [`retry`](crate::util::RequestExt::retry) combinator.
 #[derive(Clone)]
-pub struct Retrying<R, T, F = (), B = ExponentialBackoff> {
+pub struct Retrying<R, T, B = ExponentialBackoff, F = ()> {
     inner: R,
-    pred: F,
-    backoff: B,
     timer: T,
+    backoff: B,
+    pred: F,
 }
 
-impl<R, T, B> Retrying<R, T, (), B>
+impl<R, T, B> Retrying<R, T, B>
 where
     R: BaseRequest,
     T: Timer + Default + Unpin,
@@ -69,7 +70,7 @@ where
     }
 }
 
-impl<R, T, B> Retrying<R, T, (), B>
+impl<R, T, B> Retrying<R, T, B>
 where
     R: BaseRequest,
     T: Timer + Unpin,
@@ -78,26 +79,26 @@ where
     pub(crate) fn new(req: R, timer: T, backoff: B) -> Self {
         Retrying {
             inner: req,
-            pred: (),
-            backoff,
             timer,
+            backoff,
+            pred: (),
         }
     }
 
-    pub(crate) fn with_predicate<F>(self, pred: F) -> Retrying<R, T, F, B>
+    pub(crate) fn with_predicate<F>(self, pred: F) -> Retrying<R, T, B, F>
     where
         F: RetrialPredicate<R>,
     {
         Retrying {
             inner: self.inner,
-            pred,
-            backoff: self.backoff,
             timer: self.timer,
+            backoff: self.backoff,
+            pred,
         }
     }
 }
 
-impl<R, T, F, B> BaseRequest for Retrying<R, T, F, B>
+impl<R, T, B, F> BaseRequest for Retrying<R, T, B, F>
 where
     R: BaseRequest,
 {
@@ -105,7 +106,7 @@ where
     type Error = RetryError<R::Error>;
 }
 
-impl<R, T, F, B, C> OneshotRequest<C> for Retrying<R, T, F, B>
+impl<R, T, B, F, C> OneshotRequest<C> for Retrying<R, T, B, F>
 where
     Self: RetryMethod<C, Response = R::Response> + Unpin,
     R: Request<C>,
@@ -124,7 +125,7 @@ where
     }
 }
 
-impl<R, T, F, B> Unpin for Retrying<R, T, F, B>
+impl<R, T, B, F> Unpin for Retrying<R, T, B, F>
 where
     R: Unpin,
     F: Unpin,
@@ -156,12 +157,12 @@ pub trait RetryMethod<C> {
     }
 }
 
-impl<R, T, F, B, C> RetryMethod<C> for Retrying<R, T, F, B>
+impl<R, T, B, F, C> RetryMethod<C> for Retrying<R, T, B, F>
 where
     R: Request<C>,
     T: Timer,
-    F: RetrialPredicate<R>,
     B: Backoff,
+    F: RetrialPredicate<R>,
 {
     type Response = R::Response;
     type Delay = T::Delay;
