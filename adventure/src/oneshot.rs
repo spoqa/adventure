@@ -26,10 +26,7 @@ pub struct Oneshot<R> {
     inner: R,
 }
 
-impl<R> From<R> for Oneshot<R>
-where
-    R: Clone,
-{
+impl<R> From<R> for Oneshot<R> {
     fn from(req: R) -> Self {
         Oneshot { inner: req }
     }
