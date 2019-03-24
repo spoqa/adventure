@@ -7,10 +7,8 @@ repository = "https://github.com/spoqa/adventure"
 readme = "../README.md"
 categories = [
     "asynchronous",
-    "api-bindings",
     "network-programming",
     "rust-patterns",
-    "web-programming::http-client",
 ]
 authors = ["Eunchong Yu <gracie@spoqa.com>"]
 license = "MIT OR Apache-2.0"
