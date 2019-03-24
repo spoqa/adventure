@@ -7,6 +7,10 @@
    `Clone`, instead of reexporting from `backoff` crate.
  - A type parameter of `PagedRequest` is removed, to propagate this property
    through a `OneshotRequest<C>` combinator.
+ - Adapter types for futures 0.1 like `ResponseFuture` are renamed like
+   `Future01Response`.
+ - Adapter types for `std::future` like `ResponseStdFuture` are renamed like
+   `FutureResponse`.
 
 ### Bug fixes
 

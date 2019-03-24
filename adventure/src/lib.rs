@@ -14,7 +14,7 @@
 //! use std::time::Duration;
 //!
 //! use adventure::prelude::*;
-//! use adventure::response::ResponseLocalFutureObj;
+//! use adventure::response::LocalFuture01ResponseObj;
 //! use futures::Future;
 //! use reqwest::{r#async::Client, Error};
 //! use serde::Deserialize;
@@ -41,7 +41,7 @@
 //!
 //! impl<'a> Request<&'a Client> for GetRepo<'_> {
 //!     // convenient wrapper for boxed futures
-//!     type Response = ResponseLocalFutureObj<'a, Self::Ok, Self::Error>;
+//!     type Response = LocalFuture01ResponseObj<'a, Self::Ok, Self::Error>;
 //!
 //!     // implement how to send the request and extract the result.
 //!     fn send(&self, client: &'a Client) -> Self::Response {
@@ -50,7 +50,7 @@
 //!             .header("Accept", "application/vnd.github.v3+json")
 //!             .send()
 //!             .and_then(|mut r| r.json());
-//!         ResponseLocalFutureObj::new(resp)
+//!         LocalFuture01ResponseObj::new(resp)
 //!     }
 //! }
 //!

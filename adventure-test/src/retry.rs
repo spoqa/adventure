@@ -27,9 +27,9 @@ impl Clone for Numbers {
 }
 
 #[cfg(feature = "std-future")]
-type Resp = ResponseStdFutureObj<'static, usize, String>;
+type Resp = FutureResponseObj<'static, usize, String>;
 #[cfg(all(feature = "futures", not(feature = "std-future")))]
-type Resp = ResponseFutureObj<'static, usize, String>;
+type Resp = Future01ResponseObj<'static, usize, String>;
 
 impl BaseRequest for Numbers {
     type Ok = usize;

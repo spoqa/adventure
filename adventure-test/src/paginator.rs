@@ -159,9 +159,9 @@ mod futures01 {
     use futures::{future, Stream};
     use tokio::runtime::current_thread::block_on_all;
 
-    use adventure::response::ResponseLocalFutureObj;
+    use adventure::response::LocalFuture01ResponseObj;
 
-    pub(super) type Response = ResponseLocalFutureObj<'static, usize, ()>;
+    pub(super) type Response = LocalFuture01ResponseObj<'static, usize, ()>;
 
     impl MockClient<Response> {
         pub(super) fn send_request(&self, req: &Numbers) -> Response {
@@ -205,9 +205,9 @@ mod std_futures {
     use futures_executor::block_on;
     use futures_util::{future, stream::StreamExt, try_stream::TryStreamExt};
 
-    use adventure::response::ResponseStdLocalFutureObj;
+    use adventure::response::LocalFutureResponseObj;
 
-    pub(super) type Response = ResponseStdLocalFutureObj<'static, usize, ()>;
+    pub(super) type Response = LocalFutureResponseObj<'static, usize, ()>;
 
     impl MockClient<Response> {
         pub(super) fn send_request(&self, req: &Numbers) -> Response {

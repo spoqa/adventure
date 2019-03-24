@@ -43,7 +43,7 @@ mod internal_futures01 {
     }
 
     #[cfg(feature = "std-future")]
-    type Wrap<T> = crate::response::ResponseStdFuture<futures_util::compat::Compat01As03<T>>;
+    type Wrap<T> = crate::response::FutureResponse<futures_util::compat::Compat01As03<T>>;
 
     #[cfg(not(feature = "std-future"))]
     type Wrap<T> = T;
@@ -59,7 +59,7 @@ mod internal_futures01 {
         pub(crate) fn new(object: T) -> Self {
             let object = futures_util::compat::Compat01As03::new(object);
             Compat {
-                inner: crate::response::ResponseStdFuture::new(object),
+                inner: crate::response::FutureResponse::new(object),
             }
         }
 
