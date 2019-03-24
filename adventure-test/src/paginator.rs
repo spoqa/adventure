@@ -52,7 +52,7 @@ macro_rules! test_cases {
             }
         }
 
-        impl PagedRequest<&MockClient<Response>> for &Numbers {
+        impl PagedRequest for &Numbers {
             fn advance(&mut self, response: &Self::Ok) -> bool {
                 if *response < self.end {
                     self.current.fetch_add(1, Ordering::SeqCst);

@@ -5,6 +5,8 @@
 
  - `retry::ExponentialBackoff` is replaced to a wrapper type which implements
    `Clone`, instead of reexporting from `backoff` crate.
+ - A type parameter of `PagedRequest` is removed, to propagate this property
+   through a `OneshotRequest<C>` combinator.
 
 ### Bug fixes
 

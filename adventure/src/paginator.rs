@@ -3,37 +3,37 @@ use std::pin::Pin;
 
 use pin_utils::unsafe_pinned;
 
-use crate::request::Request;
+use crate::request::{BaseRequest, Request};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
 /// A request able to send subsequent requests to enumerate the entire result.
-pub trait PagedRequest<C>: Request<C> {
+pub trait PagedRequest: BaseRequest {
     /// Modify itself to retrive the next response, of return `false` if the
     /// given response was the last one.
     fn advance(&mut self, response: &Self::Ok) -> bool;
 
-    fn paginate(self, client: C) -> Paginator<C, Self>
+    fn paginate<C>(self, client: C) -> Paginator<C, Self>
     where
-        Self: Sized,
+        Self: Request<C> + Sized,
     {
         Paginator::new(client, self)
     }
 }
 
-impl<R, C> PagedRequest<C> for Box<R>
+impl<R> PagedRequest for Box<R>
 where
-    R: PagedRequest<C>,
+    R: PagedRequest,
 {
     fn advance(&mut self, response: &Self::Ok) -> bool {
         (**self).advance(response)
     }
 }
 
-impl<P, C> PagedRequest<C> for Pin<P>
+impl<P> PagedRequest for Pin<P>
 where
     P: DerefMut,
-    <P as Deref>::Target: PagedRequest<C> + Unpin,
+    <P as Deref>::Target: PagedRequest + Unpin,
 {
     fn advance(&mut self, response: &Self::Ok) -> bool {
         self.as_mut().get_mut().advance(response)
@@ -43,7 +43,7 @@ where
 /// A stream over the pages that consists the entire set from the request.
 pub struct Paginator<C, R>
 where
-    R: PagedRequest<C>,
+    R: PagedRequest + Request<C>,
 {
     client: C,
     request: Option<R>,
@@ -52,7 +52,7 @@ where
 
 impl<C, R> Paginator<C, R>
 where
-    R: PagedRequest<C>,
+    R: PagedRequest + Request<C>,
 {
     unsafe_pinned!(request: Option<R>);
 
@@ -70,14 +70,14 @@ where
 impl<C, R> Unpin for Paginator<C, R>
 where
     C: Unpin,
-    R: PagedRequest<C> + Unpin,
+    R: PagedRequest + Request<C> + Unpin,
 {
 }
 
 impl<C, R> Paginator<C, R>
 where
     C: Clone,
-    R: PagedRequest<C> + Unpin,
+    R: PagedRequest + Request<C> + Unpin,
 {
     fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Result<R::Ok, R::Error>>> {
         if self.as_mut().next().is_none() {
@@ -122,12 +122,13 @@ mod impl_futures01 {
     use futures::{Async, Poll, Stream};
 
     use super::{PagedRequest, Paginator};
+    use crate::request::Request;
     use crate::task::Waker;
 
     impl<C, R> Stream for Paginator<C, R>
     where
         C: Clone + Unpin,
-        R: PagedRequest<C> + Unpin,
+        R: PagedRequest + Request<C> + Unpin,
     {
         type Item = R::Ok;
         type Error = R::Error;
@@ -152,12 +153,13 @@ mod impl_std {
     use futures_core::{task::Waker, Stream};
 
     use super::{PagedRequest, Paginator};
+    use crate::request::Request;
     use crate::task::Poll;
 
     impl<C, R> Stream for Paginator<C, R>
     where
         C: Clone,
-        R: PagedRequest<C> + Unpin,
+        R: PagedRequest + Request<C> + Unpin,
     {
         type Item = Result<R::Ok, R::Error>;
 
