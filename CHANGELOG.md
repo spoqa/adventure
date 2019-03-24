@@ -1,7 +1,9 @@
 0.4.0 (not released)
 --------------------
 
+### Breaking Changes
 
+ - `Request::send` receives `Pin<&mut Self>` instead of `&self`.
 
 0.3.0 (March 24, 2019)
 ----------------------

@@ -1,3 +1,4 @@
+use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
@@ -39,15 +40,15 @@ impl BaseRequest for Numbers {
 impl<C> OneshotRequest<C> for Numbers {
     type Response = Resp;
 
-    fn send_once(self, client: C) -> Self::Response {
-        self.send(client)
+    fn send_once(mut self, client: C) -> Self::Response {
+        Pin::new(&mut self).send(client)
     }
 }
 
 impl<C> Request<C> for Numbers {
     type Response = Resp;
 
-    fn send(&self, _client: C) -> Self::Response {
+    fn send(self: Pin<&mut Self>, _client: C) -> Self::Response {
         let i = self.current.fetch_add(1, Ordering::SeqCst);
         if i < self.end {
             Resp::new(future::err(format!("{} tried", i)))
@@ -91,7 +92,7 @@ fn retry_clone() {
         current: AtomicUsize::new(1),
         end: 5,
     };
-    let cloned = (&numbers).retry().clone();
+    let cloned = numbers.retry().clone();
 
     assert_eq!(block_on(cloned.send_once(())).unwrap(), 5);
 }
@@ -102,7 +103,9 @@ fn retry_send() {
         current: AtomicUsize::new(1),
         end: 5,
     };
-    let res = (&numbers).retry().send(());
+    let req = numbers.retry();
+    pin_mut!(req);
+    let res = req.send(());
 
     assert_eq!(block_on(res).unwrap(), 5);
 }

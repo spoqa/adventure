@@ -44,7 +44,7 @@
 //!     type Response = LocalFuture01ResponseObj<'a, Self::Ok, Self::Error>;
 //!
 //!     // implement how to send the request and extract the result.
-//!     fn send(&self, client: &'a Client) -> Self::Response {
+//!     fn send(mut self: Pin<&mut Self>, client: &'a Client) -> Self::Response {
 //!         let url = format!("https://api.github.com/repos/{}/{}", self.owner, self.repo);
 //!         let resp = client.get(&url)
 //!             .header("Accept", "application/vnd.github.v3+json")

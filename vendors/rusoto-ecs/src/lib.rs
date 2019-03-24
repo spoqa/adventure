@@ -14,6 +14,7 @@
 //!     .retry()
 //!     .paginate(Arc::new(client))
 use std::ops::Deref;
+use std::pin::Pin;
 use std::time::Duration;
 
 use adventure::{
@@ -87,8 +88,8 @@ macro_rules! impl_adventure {
             type Response = RusotoResponse<Self>;
 
             #[inline]
-            fn send(&self, client: P) -> Self::Response {
-                self.clone().send_once(client)
+            fn send(self: Pin<&mut Self>, client: P) -> Self::Response {
+                self.as_ref().get_ref().clone().send_once(client)
             }
         }
 

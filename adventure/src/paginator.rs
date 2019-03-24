@@ -81,8 +81,9 @@ where
 {
     fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Result<R::Ok, R::Error>>> {
         if self.as_mut().next().is_none() {
-            if let Some(request) = &self.as_ref().request {
-                let next = request.send(self.client.clone());
+            let client = self.client.clone();
+            if let Some(request) = self.as_mut().request().as_pin_mut() {
+                let next = request.send(client);
                 self.as_mut().next().set(Some(next));
             } else {
                 return Poll::Ready(None);

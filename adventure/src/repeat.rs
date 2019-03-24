@@ -1,3 +1,5 @@
+use std::pin::Pin;
+
 use crate::oneshot::OneshotRequest;
 use crate::request::{BaseRequest, Request};
 
@@ -42,7 +44,7 @@ where
 {
     type Response = R::Response;
 
-    fn send(&self, client: C) -> Self::Response {
+    fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
         self.inner.clone().send_once(client)
     }
 }

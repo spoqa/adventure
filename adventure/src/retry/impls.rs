@@ -99,6 +99,13 @@ where
     }
 }
 
+impl<R, T, B, F> Retrying<R, T, B, F>
+where
+    R: BaseRequest,
+{
+    unsafe_pinned!(inner: R);
+}
+
 impl<R, T, B, F> BaseRequest for Retrying<R, T, B, F>
 where
     R: BaseRequest,
@@ -135,7 +142,7 @@ where
 {
     type Response = Retrial<Self, C>;
 
-    fn send(&self, client: C) -> Self::Response {
+    fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
         Retrial {
             client,
             request: self.clone(),
@@ -170,7 +177,7 @@ pub trait RetryMethod<C> {
     type Response: Response;
     type Delay: Response<Ok = (), Error = RetryError>;
 
-    fn send(&self, client: C) -> Self::Response;
+    fn send(self: Pin<&mut Self>, client: C) -> Self::Response;
     fn next_backoff(&mut self) -> Option<Duration>;
     fn check_retry(&mut self, err: &WaitError<Self, C>, next_duration: Duration) -> bool;
 
@@ -196,8 +203,8 @@ where
     type Response = R::Response;
     type Delay = T::Delay;
 
-    fn send(&self, client: C) -> Self::Response {
-        self.inner.send(client)
+    fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
+        self.inner().send(client)
     }
 
     fn next_backoff(&mut self) -> Option<Duration> {
@@ -278,8 +285,9 @@ where
         }
 
         if self.as_mut().next().as_pin_mut().is_none() {
-            let request = &self.as_ref().request;
-            let next = request.send(self.client.clone());
+            let client = self.client.clone();
+            let request = self.as_mut().request();
+            let next = request.send(client);
             self.as_mut().next().set(Some(next));
         }
 

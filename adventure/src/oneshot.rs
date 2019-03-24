@@ -1,3 +1,5 @@
+use pin_utils::pin_mut;
+
 use crate::repeat::Repeat;
 use crate::request::{BaseRequest, Request};
 use crate::response::Response;
@@ -56,7 +58,9 @@ where
     type Response = R::Response;
 
     fn send_once(self, client: C) -> Self::Response {
-        self.inner.send(client)
+        let inner = self.inner;
+        pin_mut!(inner);
+        inner.send(client)
     }
 }
 

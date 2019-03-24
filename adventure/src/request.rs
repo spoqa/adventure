@@ -1,5 +1,5 @@
 //! A base trait represents a request.
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -70,7 +70,7 @@ pub trait Request<C>: BaseRequest {
     /// The type of corresponding responses of this request.
     type Response: Response<Ok = Self::Ok, Error = Self::Error>;
 
-    fn send(&self, client: C) -> Self::Response;
+    fn send(self: Pin<&mut Self>, client: C) -> Self::Response;
 
     fn oneshot(self) -> Oneshot<Self>
     where
@@ -105,53 +105,24 @@ pub trait Request<C>: BaseRequest {
     }
 }
 
-impl<R, C> Request<C> for &R
-where
-    R: Request<C>,
-{
-    type Response = R::Response;
-    fn send(&self, client: C) -> Self::Response {
-        (*self).send(client)
-    }
-}
-
 impl<R, C> Request<C> for Box<R>
 where
     R: Request<C>,
 {
     type Response = R::Response;
-    fn send(&self, client: C) -> Self::Response {
-        (**self).send(client)
-    }
-}
-
-impl<R, C> Request<C> for Rc<R>
-where
-    R: Request<C>,
-{
-    type Response = R::Response;
-    fn send(&self, client: C) -> Self::Response {
-        (**self).send(client)
-    }
-}
-
-impl<R, C> Request<C> for Arc<R>
-where
-    R: Request<C>,
-{
-    type Response = R::Response;
-    fn send(&self, client: C) -> Self::Response {
-        (**self).send(client)
+    fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
+        let pinned: Pin<&mut R> = unsafe { self.map_unchecked_mut(|b| b.as_mut()) };
+        R::send(pinned, client)
     }
 }
 
 impl<P, C> Request<C> for Pin<P>
 where
-    P: Deref,
+    P: DerefMut + Unpin,
     <P as Deref>::Target: Request<C>,
 {
     type Response = <<P as Deref>::Target as Request<C>>::Response;
-    fn send(&self, client: C) -> Self::Response {
-        (**self).send(client)
+    fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
+        <<P as Deref>::Target>::send(self.get_mut().as_mut(), client)
     }
 }
