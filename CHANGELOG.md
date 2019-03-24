@@ -1,5 +1,10 @@
-0.3.0 (March 24, 2019)
+0.4.0 (not released)
 --------------------
+
+
+
+0.3.0 (March 24, 2019)
+----------------------
 
 ### Breaking Changes
 
@@ -21,7 +26,7 @@
    request combinators, if their original request implements the same trait.
 
 0.2.0 (March 24, 2019)
---------------------
+----------------------
 
 ### Breaking Changes
 
