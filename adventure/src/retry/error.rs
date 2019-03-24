@@ -1,17 +1,17 @@
 use std::error::Error as StdError;
 use std::fmt::{self, Display};
 
-pub enum Unreachable {}
+pub enum Infallible {}
 
 /// Errors encountered by the retrial operation.
 #[derive(Debug)]
-pub struct RetryError<E = Unreachable> {
+pub struct RetryError<E = Infallible> {
     inner: RetryErrorKind<E>,
 }
 
 #[derive(Debug)]
 enum RetryErrorKind<E> {
-    Inner(E),
+    Aborted(E),
     Timeout,
     TimerShutdown,
 }
@@ -20,7 +20,7 @@ impl<E: Display> Display for RetryError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use RetryErrorKind::*;
         match &self.inner {
-            Inner(e) => e.fmt(f),
+            Aborted(e) => e.fmt(f),
             Timeout => "Timeout reached".fmt(f),
             TimerShutdown => "Timer has gone".fmt(f),
         }
@@ -31,7 +31,7 @@ impl<E: StdError + 'static> StdError for RetryError<E> {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         use RetryErrorKind::*;
         match &self.inner {
-            Inner(e) => Some(&*e),
+            Aborted(e) => Some(&*e),
             _ => None,
         }
     }
@@ -40,7 +40,7 @@ impl<E: StdError + 'static> StdError for RetryError<E> {
 impl<E> RetryError<E> {
     pub fn from_err(e: E) -> Self {
         RetryError {
-            inner: RetryErrorKind::Inner(e),
+            inner: RetryErrorKind::Aborted(e),
         }
     }
 
@@ -57,7 +57,7 @@ impl<E> RetryError<E> {
     }
 
     pub fn as_inner(&self) -> Option<&E> {
-        if let RetryErrorKind::Inner(e) = &self.inner {
+        if let RetryErrorKind::Aborted(e) = &self.inner {
             Some(e)
         } else {
             None
@@ -65,11 +65,16 @@ impl<E> RetryError<E> {
     }
 
     pub fn into_inner(self) -> Option<E> {
-        if let RetryErrorKind::Inner(e) = self.inner {
+        if let RetryErrorKind::Aborted(e) = self.inner {
             Some(e)
         } else {
             None
         }
+    }
+
+    /// Returns `true` if the error was caused by the retrial has aborted.
+    pub fn is_aborted(&self) -> bool {
+        self.as_inner().is_some()
     }
 
     /// Returns `true` if the error was caused by the operation timed out.
@@ -100,7 +105,7 @@ impl RetryError {
     pub(crate) fn transform<E>(self) -> RetryError<E> {
         use RetryErrorKind::*;
         let inner = match self.inner {
-            Inner(_) => unreachable!(),
+            Aborted(_) => unreachable!(),
             Timeout => Timeout,
             TimerShutdown => TimerShutdown,
         };
