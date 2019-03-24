@@ -30,30 +30,39 @@ pub trait RequestExt {
     }
 
     #[cfg(feature = "tokio-timer")]
-    fn with_backoff(self) -> Retrying<Self, TokioTimer>
+    fn retry(self) -> Retrying<Self, TokioTimer>
     where
         Self: RetriableRequest + Sized,
     {
-        Retrying::new(self)
+        Retrying::from_default(self)
     }
 
     #[cfg(feature = "tokio-timer")]
-    fn with_backoff_if<F>(self, pred: F) -> Retrying<Self, TokioTimer, F>
+    fn retry_if<F>(self, pred: F) -> Retrying<Self, TokioTimer, F>
     where
         Self: BaseRequest + Sized,
         F: Fn(&Self, &<Self as BaseRequest>::Error, Duration) -> bool,
     {
-        Retrying::with_predicate(self, pred)
+        Retrying::from_default(self).with_predicate(pred)
     }
 
-    fn with_backoff_config<T, F, B>(self, timer: T, pred: F, backoff: B) -> Retrying<Self, T, F, B>
+    #[cfg(feature = "tokio-timer")]
+    fn retry_with_backoff<B>(self, backoff: B) -> Retrying<Self, TokioTimer, (), B>
+    where
+        Self: BaseRequest + Sized,
+        B: Backoff,
+    {
+        Retrying::new(self, Default::default(), backoff)
+    }
+
+    fn retry_with_config<T, F, B>(self, timer: T, pred: F, backoff: B) -> Retrying<Self, T, F, B>
     where
         Self: BaseRequest + Sized,
         T: Timer + Unpin,
         F: Fn(&Self, &<Self as BaseRequest>::Error, Duration) -> bool,
         B: Backoff,
     {
-        Retrying::with_config(self, timer, pred, backoff)
+        Retrying::new(self, timer, backoff).with_predicate(pred)
     }
 }
 

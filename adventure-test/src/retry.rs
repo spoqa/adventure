@@ -80,7 +80,7 @@ fn retry_simple() {
         end: 5,
     };
     pin_mut!(numbers);
-    let res = numbers.with_backoff().send_once(());
+    let res = numbers.retry().send_once(());
 
     assert_eq!(block_on(res).unwrap(), 5);
 }

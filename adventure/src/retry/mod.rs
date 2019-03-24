@@ -15,7 +15,7 @@ use crate::response::Response;
 pub use self::tokio::TokioTimer;
 pub use self::{
     error::RetryError,
-    impls::{RetriableResponse, Retrying},
+    impls::{Retrial, Retrying},
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 

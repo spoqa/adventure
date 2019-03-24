@@ -54,7 +54,7 @@
 //!     }
 //! }
 //!
-//! // this is for `with_backoff()` method.
+//! // this is for `retry()` method.
 //! impl RetriableRequest for GetRepo<'_> {
 //!     fn should_retry(&self, err: &Self::Error, next_duration: Duration) -> bool {
 //!         err.is_server_error()
@@ -68,7 +68,7 @@
 //! let client = Client::new();
 //! let request = GetRepo { owner: "spoqa", repo: "adventure" };
 //! let response = request
-//!     .with_backoff()
+//!     .retry()
 //!     .send_once(&client);
 //! let repo = block_on_all(response.into_future())?;
 //! assert_eq!(repo.description, "Helps your great adventure for the various type of requests.");

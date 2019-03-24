@@ -17,44 +17,41 @@ pub struct Retrying<R, T, F = (), B = ExponentialBackoff> {
     timer: T,
 }
 
-impl<R, T> Retrying<R, T>
-where
-    R: RetriableRequest,
-    T: Timer + Default + Unpin,
-{
-    pub(crate) fn new(req: R) -> Self {
-        Self::with_predicate(req, ())
-    }
-}
-
-impl<R, T, F> Retrying<R, T, F>
+impl<R, T, B> Retrying<R, T, (), B>
 where
     R: BaseRequest,
     T: Timer + Default + Unpin,
+    B: Backoff + Default,
 {
-    pub(crate) fn with_predicate(req: R, pred: F) -> Self {
-        Retrying {
-            inner: req,
-            pred,
-            backoff: ExponentialBackoff::default(),
-            timer: Default::default(),
-        }
+    pub(crate) fn from_default(req: R) -> Self {
+        Self::new(req, T::default(), B::default())
     }
 }
 
-impl<R, T, F, B> Retrying<R, T, F, B>
+impl<R, T, B> Retrying<R, T, (), B>
 where
     R: BaseRequest,
     T: Timer + Unpin,
-    F: FnMut(&R, &R::Error, Duration) -> bool,
     B: Backoff,
 {
-    pub(crate) fn with_config(req: R, timer: T, pred: F, backoff: B) -> Self {
+    pub(crate) fn new(req: R, timer: T, backoff: B) -> Self {
         Retrying {
             inner: req,
-            pred,
+            pred: (),
             backoff,
             timer,
+        }
+    }
+
+    pub(crate) fn with_predicate<F>(self, pred: F) -> Retrying<R, T, F, B>
+    where
+        F: Fn(&R, &<R as BaseRequest>::Error, Duration) -> bool,
+    {
+        Retrying {
+            inner: self.inner,
+            pred,
+            backoff: self.backoff,
+            timer: self.timer,
         }
     }
 }
@@ -74,10 +71,10 @@ where
     R::Response: Unpin,
     C: Clone,
 {
-    type Response = RetriableResponse<Self, C>;
+    type Response = Retrial<Self, C>;
 
     fn send_once(self, client: C) -> Self::Response {
-        RetriableResponse {
+        Retrial {
             client,
             request: self,
             next: None,
@@ -179,7 +176,8 @@ where
     }
 }
 
-pub struct RetriableResponse<R, C>
+/// Response for [`retry`](crate::util::RequestExt::retry) combinator.
+pub struct Retrial<R, C>
 where
     R: RetryMethod<C>,
 {
@@ -189,7 +187,7 @@ where
     wait: Option<R::Delay>,
 }
 
-impl<R, C> Unpin for RetriableResponse<R, C>
+impl<R, C> Unpin for Retrial<R, C>
 where
     R: RetryMethod<C> + Unpin,
     R::Response: Unpin,
@@ -197,7 +195,7 @@ where
 {
 }
 
-impl<R, C> Response for RetriableResponse<R, C>
+impl<R, C> Response for Retrial<R, C>
 where
     R: RetryMethod<C> + Unpin,
     R::Response: Unpin,
@@ -211,7 +209,7 @@ where
     }
 }
 
-impl<R, C> RetriableResponse<R, C>
+impl<R, C> Retrial<R, C>
 where
     R: RetryMethod<C> + Unpin,
     R::Response: Unpin,
