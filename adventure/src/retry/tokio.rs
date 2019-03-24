@@ -7,9 +7,11 @@ use super::{RetryError, Timer};
 use crate::response::Response;
 use crate::task::{Compat, Poll, Waker};
 
+/// Provides a delayed response using [`tokio_timer`] crate.
 #[derive(Default)]
 pub struct TokioTimer;
 
+/// A response that completes at a specified instant in time.
 pub struct Delay {
     inner: Compat<DelayImpl>,
 }

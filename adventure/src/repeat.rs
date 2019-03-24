@@ -1,6 +1,8 @@
 use crate::oneshot::OneshotRequest;
 use crate::request::{BaseRequest, Request};
 
+/// An [`Request`] adaptor for types that implements [`OneshotRequest`], by
+/// cloning itself.
 #[derive(Clone)]
 pub struct Repeat<R> {
     inner: R,

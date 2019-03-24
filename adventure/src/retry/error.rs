@@ -3,6 +3,7 @@ use std::fmt::{self, Display};
 
 pub enum Unreachable {}
 
+/// Errors encountered by the retrial operation.
 #[derive(Debug)]
 pub struct RetryError<E = Unreachable> {
     inner: RetryErrorKind<E>,
@@ -71,6 +72,7 @@ impl<E> RetryError<E> {
         }
     }
 
+    /// Returns `true` if the error was caused by the operation timed out.
     pub fn is_timeout(&self) -> bool {
         if let RetryErrorKind::Timeout = &self.inner {
             true
@@ -79,6 +81,12 @@ impl<E> RetryError<E> {
         }
     }
 
+    /// Returns `true` if the error was caused by the timer begin shutdown.
+    ///
+    /// This is related the internal state of the timer implementation,
+    /// meaning the operation will never be able to complete. This is a
+    /// permanent error, this is, once this error is observed, retries will
+    /// never succeed in the future.
     pub fn is_shutdown(&self) -> bool {
         if let RetryErrorKind::TimerShutdown = &self.inner {
             true

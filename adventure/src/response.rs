@@ -62,7 +62,7 @@ where
 mod impl_futures01 {
     use std::pin::Pin;
 
-    use futures::Future as Future01;
+    use futures::Future;
     use pin_utils::unsafe_pinned;
 
     use super::Response;
@@ -87,7 +87,7 @@ mod impl_futures01 {
 
     impl<F> From<F> for ResponseFuture<F>
     where
-        F: Future01,
+        F: Future,
     {
         fn from(fut: F) -> Self {
             ResponseFuture::new(fut)
@@ -96,7 +96,7 @@ mod impl_futures01 {
 
     impl<F> Response for ResponseFuture<F>
     where
-        F: Future01,
+        F: Future,
     {
         type Ok = F::Item;
         type Error = F::Error;
@@ -109,15 +109,15 @@ mod impl_futures01 {
     /// A [`Response`] wrapping a trait object of polling futures,
     /// similar to [`Box`]`<dyn `[`Future`]`>`.
     pub struct ResponseLocalFutureObj<'a, T, E> {
-        inner: Compat<Box<dyn Future01<Item = T, Error = E> + 'a>>,
+        inner: Compat<Box<dyn Future<Item = T, Error = E> + 'a>>,
     }
 
     impl<'a, T, E> ResponseLocalFutureObj<'a, T, E> {
-        unsafe_pinned!(inner: Compat<Box<dyn Future01<Item = T, Error = E> + 'a>>);
+        unsafe_pinned!(inner: Compat<Box<dyn Future<Item = T, Error = E> + 'a>>);
 
         pub fn new<F>(fut: F) -> Self
         where
-            F: Future01<Item = T, Error = E> + 'a,
+            F: Future<Item = T, Error = E> + 'a,
         {
             ResponseLocalFutureObj {
                 inner: Compat::new(Box::new(fut)),
@@ -137,15 +137,15 @@ mod impl_futures01 {
     /// A [`Response`] wrapping a trait object of polling futures,
     /// similar to [`Box`]`<dyn `[`Future`]` + `[`Send`]` + `[`Sync`]`>`.
     pub struct ResponseFutureObj<'a, T, E> {
-        inner: Compat<Box<dyn Future01<Item = T, Error = E> + Send + Sync + 'a>>,
+        inner: Compat<Box<dyn Future<Item = T, Error = E> + Send + Sync + 'a>>,
     }
 
     impl<'a, T, E> ResponseFutureObj<'a, T, E> {
-        unsafe_pinned!(inner: Compat<Box<dyn Future01<Item = T, Error = E> + Send + Sync + 'a>>);
+        unsafe_pinned!(inner: Compat<Box<dyn Future<Item = T, Error = E> + Send + Sync + 'a>>);
 
         pub fn new<F>(fut: F) -> Self
         where
-            F: Future01<Item = T, Error = E> + Send + Sync + 'a,
+            F: Future<Item = T, Error = E> + Send + Sync + 'a,
         {
             ResponseFutureObj {
                 inner: Compat::new(Box::new(fut)),

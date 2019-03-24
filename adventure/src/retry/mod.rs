@@ -11,10 +11,11 @@ use crate::request::BaseRequest;
 use crate::response::Response;
 
 #[cfg(feature = "tokio-timer")]
+#[doc(inline)]
 pub use self::tokio::TokioTimer;
 pub use self::{
     error::RetryError,
-    impls::{RetriableResponse, RetryMethod, Retrying},
+    impls::{RetriableResponse, Retrying},
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 

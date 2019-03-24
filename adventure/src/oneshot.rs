@@ -21,6 +21,7 @@ where
     }
 }
 
+/// An [`OneshotRequest`] adaptor for types that implements [`Request`].
 #[derive(Clone)]
 pub struct Oneshot<R> {
     inner: R,

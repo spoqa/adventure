@@ -97,3 +97,7 @@ pub use crate::{
     request::{BaseRequest, Request},
     response::Response,
 };
+
+#[cfg(feature = "backoff")]
+#[doc(inline)]
+pub use crate::retry::RetriableRequest;

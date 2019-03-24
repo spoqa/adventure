@@ -97,6 +97,7 @@ where
 type WaitError<T, C> = <<T as RetryMethod<C>>::Response as Response>::Error;
 type WaitResult<T, C> = Result<<T as RetryMethod<C>>::Delay, RetryError<WaitError<T, C>>>;
 
+#[doc(hidden)]
 pub trait RetryMethod<C> {
     type Response: Response;
     type Delay: Response<Ok = (), Error = RetryError>;

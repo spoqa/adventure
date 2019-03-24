@@ -1,5 +1,7 @@
+/// Utilities for working with `Request` and `Response` traits.
 use std::time::Duration;
 
+use crate::oneshot::Oneshot;
 use crate::repeat::Repeat;
 use crate::request::BaseRequest;
 use crate::response::Response;
@@ -7,6 +9,8 @@ use crate::response::Response;
 use crate::retry::TokioTimer;
 use crate::retry::{Backoff, RetriableRequest, Retrying, Timer};
 
+/// An extension trait for `Request` and `OneshotRequest`s that provides a
+/// variety of convenient adapters.
 pub trait RequestExt {
     type Ok;
     type Error;
@@ -16,6 +20,13 @@ pub trait RequestExt {
         Self: Clone,
     {
         Repeat::from(self)
+    }
+
+    fn oneshot(self) -> Oneshot<Self>
+    where
+        Self: Sized,
+    {
+        Oneshot::from(self)
     }
 
     #[cfg(feature = "tokio-timer")]
@@ -54,16 +65,13 @@ where
     type Error = T::Error;
 }
 
+/// An extension trait for `Response`s that provides a variety of convenient
+/// adapters.
 pub trait ResponseExt {
-    fn into_future(self) -> IntoFuture<Self>
-    where
-        Self: Sized;
-}
-
-impl<T> ResponseExt for T
-where
-    T: Response,
-{
+    /// Wrap this response into a type that can work with futures.
+    ///
+    /// It is compatible with both types of futures 0.1 [`Future`] and
+    /// [`std::future::Future`].
     fn into_future(self) -> IntoFuture<Self>
     where
         Self: Sized,
@@ -72,6 +80,10 @@ where
     }
 }
 
+impl<T> ResponseExt for T where T: Response {}
+
+/// Converts a `Response` to compatible with futures, both of futures 0.1
+/// and `std::future`.
 pub struct IntoFuture<T>(T);
 
 #[cfg(feature = "futures01")]
