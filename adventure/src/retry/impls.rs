@@ -1,88 +1,65 @@
-use std::marker::PhantomData;
 use std::pin::Pin;
 use std::time::Duration;
 
 use pin_utils::unsafe_pinned;
 
-use super::{error::RetryError, RetriableRequest, RetriableResponse, Retry, Retrying};
+use super::{error::RetryError, Backoff, ExponentialBackoff, RetriableRequest, Timer};
 use crate::repeat::RepeatableRequest;
 use crate::request::{BaseRequest, Request};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
-#[doc(hidden)]
-pub trait FnRetry<C> {
-    type Error;
-    fn call(&mut self, err: &Self::Error, next_interval: Duration) -> bool;
-}
-
-impl<R, F, C> FnRetry<C> for (R, F)
-where
-    F: FnMut(&R, &R::Error, Duration) -> bool,
-    R: RepeatableRequest<C>,
-{
-    type Error = R::Error;
-    fn call(&mut self, err: &Self::Error, next_interval: Duration) -> bool {
-        (self.1)(&self.0, err, next_interval)
-    }
-}
-
-impl<R, C> FnRetry<C> for (R, ())
-where
-    R: RetriableRequest,
-{
-    type Error = R::Error;
-    fn call(&mut self, err: &Self::Error, next_interval: Duration) -> bool {
-        self.0.should_retry(err, next_interval)
-    }
+#[derive(Clone)]
+pub struct Retrying<R, T, F = (), B = ExponentialBackoff> {
+    inner: R,
+    pred: F,
+    backoff: B,
+    timer: T,
 }
 
 impl<R, T> Retrying<R, T>
 where
     R: RetriableRequest,
+    T: Timer + Default + Unpin,
 {
     pub(crate) fn new(req: R) -> Self {
-        Retrying {
-            inner: req,
-            pred: (),
-            _phantom: PhantomData,
-        }
+        Self::with_predicate(req, ())
     }
 }
 
 impl<R, T, F> Retrying<R, T, F>
 where
-    T: Retry + Unpin,
+    R: BaseRequest,
+    T: Timer + Default + Unpin,
 {
     pub(crate) fn with_predicate(req: R, pred: F) -> Self {
         Retrying {
             inner: req,
             pred,
-            _phantom: PhantomData,
+            backoff: ExponentialBackoff::default(),
+            timer: Default::default(),
         }
     }
 }
 
-impl<R, T, F> Clone for Retrying<R, T, F>
+impl<R, T, F, B> Retrying<R, T, F, B>
 where
-    R: Clone,
-    F: Clone,
+    R: BaseRequest,
+    T: Timer + Unpin,
+    F: FnMut(&R, &R::Error, Duration) -> bool,
+    B: Backoff,
 {
-    fn clone(&self) -> Self {
+    pub(crate) fn with_config(req: R, timer: T, pred: F, backoff: B) -> Self {
         Retrying {
-            inner: self.inner.clone(),
-            pred: self.pred.clone(),
-            _phantom: PhantomData,
+            inner: req,
+            pred,
+            backoff,
+            timer,
         }
-    }
-
-    fn clone_from(&mut self, source: &Self) {
-        self.inner = source.inner.clone();
-        self.pred = source.pred.clone();
     }
 }
 
-impl<R, T, F> BaseRequest for Retrying<R, T, F>
+impl<R, T, F, B> BaseRequest for Retrying<R, T, F, B>
 where
     R: BaseRequest,
 {
@@ -90,82 +67,170 @@ where
     type Error = RetryError<R::Error>;
 }
 
-impl<R, T, F, C> Request<C> for Retrying<R, T, F>
+impl<R, T, F, B, C> Request<C> for Retrying<R, T, F, B>
 where
+    Self: RetryMethod<C, Response = R::Response> + Unpin,
     R: RepeatableRequest<C>,
-    T: Retry + Unpin,
-    (R, F): FnRetry<C, Error = R::Error> + Unpin,
+    R::Response: Unpin,
     C: Clone,
 {
-    type Response = RetriableResponse<R, T, F, C>;
+    type Response = RetriableResponse<Self, C>;
 
     fn into_response(self, client: C) -> Self::Response {
         RetriableResponse {
             client,
-            request: (self.inner, self.pred),
-            retry: T::new(),
+            request: self,
             next: None,
             wait: None,
         }
     }
 }
 
-impl<R, T, F> Unpin for Retrying<R, T, F>
+impl<R, T, F, B> Unpin for Retrying<R, T, F, B>
 where
     R: Unpin,
     F: Unpin,
+    B: Unpin,
 {
 }
 
-impl<R, T, F, C> Unpin for RetriableResponse<R, T, F, C>
+type WaitError<T, C> = <<T as RetryMethod<C>>::Response as Response>::Error;
+type WaitResult<T, C> = Result<<T as RetryMethod<C>>::Delay, RetryError<WaitError<T, C>>>;
+
+pub trait RetryMethod<C> {
+    type Response: Response;
+    type Delay: Response<Ok = (), Error = RetryError>;
+
+    fn send(&self, client: C) -> Self::Response;
+    fn next_backoff(&mut self) -> Option<Duration>;
+    fn check_retry(&mut self, err: &WaitError<Self, C>, next_duration: Duration) -> bool;
+
+    fn expires_in(&mut self, next_duration: Duration) -> Self::Delay;
+
+    fn next_wait(&mut self, err: WaitError<Self, C>) -> WaitResult<Self, C> {
+        let next = self.next_backoff().ok_or_else(RetryError::timeout)?;
+        if self.check_retry(&err, next) {
+            Ok(self.expires_in(next))
+        } else {
+            Err(RetryError::from_err(err))
+        }
+    }
+}
+
+impl<R, T, B, C> RetryMethod<C> for Retrying<R, T, (), B>
 where
-    R: RepeatableRequest<C> + Unpin,
+    R: RepeatableRequest<C> + RetriableRequest,
+    T: Timer,
+    B: Backoff,
+{
+    type Response = R::Response;
+    type Delay = T::Delay;
+
+    fn send(&self, client: C) -> Self::Response {
+        self.inner.send(client)
+    }
+
+    fn next_backoff(&mut self) -> Option<Duration> {
+        self.backoff.next_backoff()
+    }
+
+    fn check_retry(
+        &mut self,
+        err: &<Self::Response as Response>::Error,
+        next_interval: Duration,
+    ) -> bool {
+        self.inner.should_retry(err, next_interval)
+    }
+
+    fn expires_in(&mut self, next_duration: Duration) -> Self::Delay {
+        self.timer.expires_in(next_duration)
+    }
+}
+
+impl<R, T, F, B, C> RetryMethod<C> for Retrying<R, T, F, B>
+where
+    R: RepeatableRequest<C>,
+    T: Timer,
+    F: FnMut(&R, &R::Error, Duration) -> bool,
+    B: Backoff,
+{
+    type Response = R::Response;
+    type Delay = T::Delay;
+
+    fn send(&self, client: C) -> Self::Response {
+        self.inner.send(client)
+    }
+
+    fn next_backoff(&mut self) -> Option<Duration> {
+        self.backoff.next_backoff()
+    }
+
+    fn check_retry(
+        &mut self,
+        err: &<Self::Response as Response>::Error,
+        next_interval: Duration,
+    ) -> bool {
+        (self.pred)(&self.inner, err, next_interval)
+    }
+
+    fn expires_in(&mut self, next_duration: Duration) -> Self::Delay {
+        self.timer.expires_in(next_duration)
+    }
+}
+
+pub struct RetriableResponse<R, C>
+where
+    R: RetryMethod<C>,
+{
+    client: C,
+    request: R,
+    next: Option<R::Response>,
+    wait: Option<R::Delay>,
+}
+
+impl<R, C> Unpin for RetriableResponse<R, C>
+where
+    R: RetryMethod<C> + Unpin,
     R::Response: Unpin,
-    T: Retry + Unpin,
-    T::Wait: Unpin,
-    F: Unpin,
     C: Unpin,
 {
 }
 
-impl<R, T, F, C> Response for RetriableResponse<R, T, F, C>
+impl<R, C> Response for RetriableResponse<R, C>
 where
-    R: RepeatableRequest<C>,
-    T: Retry + Unpin,
-    (R, F): FnRetry<C, Error = R::Error> + Unpin,
+    R: RetryMethod<C> + Unpin,
+    R::Response: Unpin,
     C: Clone,
 {
-    type Ok = R::Ok;
-    type Error = RetryError<R::Error>;
+    type Ok = <R::Response as Response>::Ok;
+    type Error = RetryError<WaitError<R, C>>;
 
     fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
         self.poll_impl(waker)
     }
 }
 
-impl<R, T, F, C> RetriableResponse<R, T, F, C>
+impl<R, C> RetriableResponse<R, C>
 where
-    R: RepeatableRequest<C>,
-    T: Retry + Unpin,
-    (R, F): FnRetry<C, Error = R::Error> + Unpin,
+    R: RetryMethod<C> + Unpin,
+    R::Response: Unpin,
     C: Clone,
 {
-    unsafe_pinned!(request: (R, F));
-    unsafe_pinned!(retry: T);
+    unsafe_pinned!(request: R);
     unsafe_pinned!(next: Option<R::Response>);
-    unsafe_pinned!(wait: Option<T::Wait>);
+    unsafe_pinned!(wait: Option<R::Delay>);
 
     fn poll_impl(
         mut self: Pin<&mut Self>,
         waker: &Waker,
-    ) -> Poll<Result<R::Ok, RetryError<R::Error>>> {
+    ) -> Poll<Result<<R::Response as Response>::Ok, RetryError<WaitError<R, C>>>> {
         if let Some(w) = self.as_mut().wait().as_pin_mut() {
             match w.poll(waker) {
                 Poll::Pending => {
                     return Poll::Pending;
                 }
                 Poll::Ready(Err(e)) => {
-                    return Poll::Ready(Err(From::from(e)));
+                    return Poll::Ready(Err(e.transform()));
                 }
                 _ => {}
             }
@@ -174,7 +239,7 @@ where
 
         if self.as_mut().next().as_pin_mut().is_none() {
             let request = &self.as_ref().request;
-            let next = request.0.send(self.client.clone());
+            let next = request.send(self.client.clone());
             self.as_mut().next().set(Some(next));
         }
 
@@ -189,7 +254,7 @@ where
             Poll::Ready(Ok(resp)) => Poll::Ready(Ok(resp)),
             Poll::Ready(Err(e)) => {
                 self.as_mut().next().set(None);
-                match self.as_mut().next_wait(e) {
+                match self.as_mut().request().get_mut().next_wait(e) {
                     Ok(w) => {
                         self.as_mut().wait().set(Some(w));
                         self.poll_impl(waker)
@@ -197,15 +262,6 @@ where
                     Err(e) => Poll::Ready(Err(e)),
                 }
             }
-        }
-    }
-
-    fn next_wait(mut self: Pin<&mut Self>, err: R::Error) -> Result<T::Wait, RetryError<R::Error>> {
-        let next = self.as_mut().retry().next_backoff()?;
-        if self.as_mut().request().get_mut().call(&err, next) {
-            Ok(self.as_ref().retry.wait(next))
-        } else {
-            Err(RetryError::from_err(err))
         }
     }
 }

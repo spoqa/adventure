@@ -1,15 +1,18 @@
 use std::error::Error as StdError;
 use std::fmt::{self, Display};
 
+pub enum Unreachable {}
+
 #[derive(Debug)]
-pub struct RetryError<E> {
+pub struct RetryError<E = Unreachable> {
     inner: RetryErrorKind<E>,
 }
 
 #[derive(Debug)]
 enum RetryErrorKind<E> {
     Inner(E),
-    Backoff(BackoffError),
+    Timeout,
+    TimerShutdown,
 }
 
 impl<E: Display> Display for RetryError<E> {
@@ -17,7 +20,8 @@ impl<E: Display> Display for RetryError<E> {
         use RetryErrorKind::*;
         match &self.inner {
             Inner(e) => e.fmt(f),
-            Backoff(e) => e.fmt(f),
+            Timeout => "Timeout reached".fmt(f),
+            TimerShutdown => "Timer has gone".fmt(f),
         }
     }
 }
@@ -27,7 +31,7 @@ impl<E: StdError + 'static> StdError for RetryError<E> {
         use RetryErrorKind::*;
         match &self.inner {
             Inner(e) => Some(&*e),
-            Backoff(e) => Some(&*e),
+            _ => None,
         }
     }
 }
@@ -36,6 +40,18 @@ impl<E> RetryError<E> {
     pub fn from_err(e: E) -> Self {
         RetryError {
             inner: RetryErrorKind::Inner(e),
+        }
+    }
+
+    pub(crate) const fn timeout() -> Self {
+        RetryError {
+            inner: RetryErrorKind::Timeout,
+        }
+    }
+
+    pub(crate) const fn shutdown() -> Self {
+        RetryError {
+            inner: RetryErrorKind::TimerShutdown,
         }
     }
 
@@ -56,67 +72,7 @@ impl<E> RetryError<E> {
     }
 
     pub fn is_timeout(&self) -> bool {
-        if let RetryErrorKind::Backoff(e) = &self.inner {
-            e.is_timeout()
-        } else {
-            false
-        }
-    }
-
-    pub fn is_shutdown(&self) -> bool {
-        if let RetryErrorKind::Backoff(e) = &self.inner {
-            e.is_shutdown()
-        } else {
-            false
-        }
-    }
-}
-
-impl<E> From<BackoffError> for RetryError<E> {
-    fn from(e: BackoffError) -> Self {
-        RetryError {
-            inner: RetryErrorKind::Backoff(e),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct BackoffError {
-    inner: BackoffErrorKind,
-}
-
-#[derive(Debug)]
-enum BackoffErrorKind {
-    Timeout,
-    TimerShutdown,
-}
-
-impl Display for BackoffError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use BackoffErrorKind::*;
-        match self.inner {
-            Timeout => "Timeout reached".fmt(f),
-            TimerShutdown => "Timer has gone".fmt(f),
-        }
-    }
-}
-
-impl StdError for BackoffError {}
-
-impl BackoffError {
-    pub(crate) const fn timeout() -> Self {
-        BackoffError {
-            inner: BackoffErrorKind::Timeout,
-        }
-    }
-    pub(crate) const fn shutdown() -> Self {
-        BackoffError {
-            inner: BackoffErrorKind::TimerShutdown,
-        }
-    }
-
-    pub fn is_timeout(&self) -> bool {
-        if let BackoffErrorKind::Timeout = self.inner {
+        if let RetryErrorKind::Timeout = &self.inner {
             true
         } else {
             false
@@ -124,10 +80,22 @@ impl BackoffError {
     }
 
     pub fn is_shutdown(&self) -> bool {
-        if let BackoffErrorKind::TimerShutdown = self.inner {
+        if let RetryErrorKind::TimerShutdown = &self.inner {
             true
         } else {
             false
         }
+    }
+}
+
+impl RetryError {
+    pub(crate) fn transform<E>(self) -> RetryError<E> {
+        use RetryErrorKind::*;
+        let inner = match self.inner {
+            Inner(_) => unreachable!(),
+            Timeout => Timeout,
+            TimerShutdown => TimerShutdown,
+        };
+        RetryError { inner }
     }
 }

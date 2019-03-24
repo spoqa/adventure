@@ -1,23 +1,20 @@
 mod error;
 mod impls;
-#[cfg(feature = "backoff-tokio")]
-mod tokio;
-mod util;
+#[cfg(feature = "tokio-timer")]
+pub mod tokio;
 
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::time::Duration;
 
-#[cfg(feature = "backoff-tokio")]
-pub use self::util::RetryBackoff;
-
-use crate::repeat::RepeatableRequest;
 use crate::request::BaseRequest;
+use crate::response::Response;
 
+#[cfg(feature = "tokio-timer")]
+pub use self::tokio::TokioTimer;
 pub use self::{
-    error::{BackoffError, RetryError},
-    util::Retry,
+    error::RetryError,
+    impls::{RetriableResponse, RetryMethod, Retrying},
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
@@ -53,20 +50,8 @@ where
     }
 }
 
-pub struct Retrying<R, T, F = ()> {
-    inner: R,
-    pred: F,
-    _phantom: PhantomData<T>,
-}
+pub trait Timer {
+    type Delay: Response<Ok = (), Error = RetryError>;
 
-pub struct RetriableResponse<R, T, F, C>
-where
-    R: RepeatableRequest<C>,
-    T: Retry,
-{
-    client: C,
-    request: (R, F),
-    retry: T,
-    next: Option<R::Response>,
-    wait: Option<T::Wait>,
+    fn expires_in(&mut self, interval: Duration) -> Self::Delay;
 }

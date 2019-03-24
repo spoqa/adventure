@@ -4,7 +4,7 @@ use std::time::Duration;
 #[cfg(all(feature = "futures", not(feature = "std-future")))]
 use futures::future;
 #[cfg(feature = "std-future")]
-use futures_util::{future, try_future::TryFutureExt};
+use futures_util::future;
 use pin_utils::pin_mut;
 use tokio::runtime::current_thread::block_on_all;
 

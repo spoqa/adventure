@@ -3,9 +3,9 @@ use std::time::Duration;
 use crate::repeat::Repeat;
 use crate::request::BaseRequest;
 use crate::response::Response;
-#[cfg(feature = "backoff-tokio")]
-use crate::retry::RetryBackoff;
-use crate::retry::{RetriableRequest, Retrying};
+#[cfg(feature = "tokio-timer")]
+use crate::retry::TokioTimer;
+use crate::retry::{Backoff, RetriableRequest, Retrying, Timer};
 
 pub trait RequestExt {
     type Ok;
@@ -18,21 +18,31 @@ pub trait RequestExt {
         Repeat::from(self)
     }
 
-    #[cfg(feature = "backoff-tokio")]
-    fn with_backoff(self) -> Retrying<Self, RetryBackoff>
+    #[cfg(feature = "tokio-timer")]
+    fn with_backoff(self) -> Retrying<Self, TokioTimer>
     where
         Self: RetriableRequest + Sized,
     {
         Retrying::new(self)
     }
 
-    #[cfg(feature = "backoff-tokio")]
-    fn with_backoff_if<F>(self, pred: F) -> Retrying<Self, RetryBackoff, F>
+    #[cfg(feature = "tokio-timer")]
+    fn with_backoff_if<F>(self, pred: F) -> Retrying<Self, TokioTimer, F>
     where
-        Self: Sized,
-        F: Fn(&Self, &Self::Error, Duration) -> bool,
+        Self: BaseRequest + Sized,
+        F: Fn(&Self, &<Self as BaseRequest>::Error, Duration) -> bool,
     {
         Retrying::with_predicate(self, pred)
+    }
+
+    fn with_backoff_config<T, F, B>(self, timer: T, pred: F, backoff: B) -> Retrying<Self, T, F, B>
+    where
+        Self: BaseRequest + Sized,
+        T: Timer + Unpin,
+        F: Fn(&Self, &<Self as BaseRequest>::Error, Duration) -> bool,
+        B: Backoff,
+    {
+        Retrying::with_config(self, timer, pred, backoff)
     }
 }
 
