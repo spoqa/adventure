@@ -3,7 +3,7 @@ use std::pin::Pin;
 
 use pin_utils::unsafe_pinned;
 
-use crate::repeat::RepeatableRequest;
+use crate::request::RepeatableRequest;
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 

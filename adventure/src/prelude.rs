@@ -3,9 +3,9 @@
 //! This module is intended to be included by `use adventure::prelude::*;`,
 //! to access the various traits and methods mostly will be used.
 
+pub use crate::oneshot::OneshotRequest;
 pub use crate::paginator::PagedRequest;
-pub use crate::repeat::RepeatableRequest;
-pub use crate::request::{BaseRequest, OneshotRequest};
+pub use crate::request::{BaseRequest, RepeatableRequest};
 pub use crate::response::Response;
 pub use crate::retry::RetriableRequest;
 pub use crate::util::{RequestExt, ResponseExt};

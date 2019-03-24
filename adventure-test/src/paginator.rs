@@ -2,9 +2,9 @@ use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use adventure::{
+    oneshot::OneshotRequest,
     paginator::{PagedRequest, Paginator},
-    repeat::RepeatableRequest,
-    request::{BaseRequest, OneshotRequest},
+    request::{BaseRequest, RepeatableRequest},
 };
 
 struct MockClient<T> {

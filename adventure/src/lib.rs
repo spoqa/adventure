@@ -78,6 +78,7 @@
 #![cfg_attr(feature = "std-future", feature(futures_api))]
 #![deny(rust_2018_idioms)]
 
+pub mod oneshot;
 pub mod paginator;
 pub mod prelude;
 pub mod repeat;
@@ -91,8 +92,8 @@ pub mod retry;
 
 #[doc(inline)]
 pub use crate::{
+    oneshot::OneshotRequest,
     paginator::{PagedRequest, Paginator},
-    repeat::RepeatableRequest,
-    request::{BaseRequest, OneshotRequest},
+    request::{BaseRequest, RepeatableRequest},
     response::Response,
 };

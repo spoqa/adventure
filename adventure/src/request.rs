@@ -1,4 +1,3 @@
-//! A base trait represents a request.
 use std::ops::Deref;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -54,22 +53,60 @@ where
     type Error = <P::Target as BaseRequest>::Error;
 }
 
-/// A generalized request-response interface, regardless how client works.
-pub trait OneshotRequest<C>: BaseRequest {
+pub trait RepeatableRequest<C>: BaseRequest {
     /// The type of corresponding responses of this request.
     type Response: Response<Ok = Self::Ok, Error = Self::Error>;
 
-    /// Send this request using the given client.
-    fn send_once(self, client: C) -> Self::Response;
+    fn send(&self, client: C) -> Self::Response;
 }
 
-impl<R, C> OneshotRequest<C> for Box<R>
+impl<R, C> RepeatableRequest<C> for &R
 where
-    R: OneshotRequest<C>,
+    R: RepeatableRequest<C>,
 {
     type Response = R::Response;
-    fn send_once(self, client: C) -> Self::Response {
-        let inner = *self;
-        inner.send_once(client)
+    fn send(&self, client: C) -> Self::Response {
+        (*self).send(client)
+    }
+}
+
+impl<R, C> RepeatableRequest<C> for Box<R>
+where
+    R: RepeatableRequest<C>,
+{
+    type Response = R::Response;
+    fn send(&self, client: C) -> Self::Response {
+        (**self).send(client)
+    }
+}
+
+impl<R, C> RepeatableRequest<C> for Rc<R>
+where
+    R: RepeatableRequest<C>,
+{
+    type Response = R::Response;
+    fn send(&self, client: C) -> Self::Response {
+        (**self).send(client)
+    }
+}
+
+impl<R, C> RepeatableRequest<C> for Arc<R>
+where
+    R: RepeatableRequest<C>,
+{
+    type Response = R::Response;
+    fn send(&self, client: C) -> Self::Response {
+        (**self).send(client)
+    }
+}
+
+impl<P, C> RepeatableRequest<C> for Pin<P>
+where
+    P: Deref,
+    <P as Deref>::Target: RepeatableRequest<C>,
+{
+    type Response = <<P as Deref>::Target as RepeatableRequest<C>>::Response;
+    fn send(&self, client: C) -> Self::Response {
+        (**self).send(client)
     }
 }

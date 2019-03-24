@@ -4,8 +4,8 @@ use std::time::Duration;
 use pin_utils::unsafe_pinned;
 
 use super::{error::RetryError, Backoff, ExponentialBackoff, RetriableRequest, Timer};
-use crate::repeat::RepeatableRequest;
-use crate::request::{BaseRequest, OneshotRequest};
+use crate::oneshot::OneshotRequest;
+use crate::request::{BaseRequest, RepeatableRequest};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
