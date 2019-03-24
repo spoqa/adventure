@@ -1,3 +1,4 @@
+//! A base trait represents a request.
 use std::ops::Deref;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -5,6 +6,8 @@ use std::sync::Arc;
 
 use crate::response::Response;
 
+/// Trait to represent types of the request, and their expected output and
+/// error types.
 pub trait BaseRequest {
     /// The type of successful values from the corresponding response.
     type Ok;
@@ -53,16 +56,20 @@ where
     type Error = <P::Target as BaseRequest>::Error;
 }
 
-pub trait RepeatableRequest<C>: BaseRequest {
+/// A generalized request-response interface, regardless how client works.
+///
+/// Because that the type of a client is parametrized, it can be implemented
+/// to work with various kind of clients for the same type of the request.
+pub trait Request<C>: BaseRequest {
     /// The type of corresponding responses of this request.
     type Response: Response<Ok = Self::Ok, Error = Self::Error>;
 
     fn send(&self, client: C) -> Self::Response;
 }
 
-impl<R, C> RepeatableRequest<C> for &R
+impl<R, C> Request<C> for &R
 where
-    R: RepeatableRequest<C>,
+    R: Request<C>,
 {
     type Response = R::Response;
     fn send(&self, client: C) -> Self::Response {
@@ -70,9 +77,9 @@ where
     }
 }
 
-impl<R, C> RepeatableRequest<C> for Box<R>
+impl<R, C> Request<C> for Box<R>
 where
-    R: RepeatableRequest<C>,
+    R: Request<C>,
 {
     type Response = R::Response;
     fn send(&self, client: C) -> Self::Response {
@@ -80,9 +87,9 @@ where
     }
 }
 
-impl<R, C> RepeatableRequest<C> for Rc<R>
+impl<R, C> Request<C> for Rc<R>
 where
-    R: RepeatableRequest<C>,
+    R: Request<C>,
 {
     type Response = R::Response;
     fn send(&self, client: C) -> Self::Response {
@@ -90,9 +97,9 @@ where
     }
 }
 
-impl<R, C> RepeatableRequest<C> for Arc<R>
+impl<R, C> Request<C> for Arc<R>
 where
-    R: RepeatableRequest<C>,
+    R: Request<C>,
 {
     type Response = R::Response;
     fn send(&self, client: C) -> Self::Response {
@@ -100,12 +107,12 @@ where
     }
 }
 
-impl<P, C> RepeatableRequest<C> for Pin<P>
+impl<P, C> Request<C> for Pin<P>
 where
     P: Deref,
-    <P as Deref>::Target: RepeatableRequest<C>,
+    <P as Deref>::Target: Request<C>,
 {
-    type Response = <<P as Deref>::Target as RepeatableRequest<C>>::Response;
+    type Response = <<P as Deref>::Target as Request<C>>::Response;
     fn send(&self, client: C) -> Self::Response {
         (**self).send(client)
     }

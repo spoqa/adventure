@@ -3,12 +3,12 @@ use std::pin::Pin;
 
 use pin_utils::unsafe_pinned;
 
-use crate::request::RepeatableRequest;
+use crate::request::Request;
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
 /// A request able to send subsequent requests to enumerate the entire result.
-pub trait PagedRequest<C>: RepeatableRequest<C> {
+pub trait PagedRequest<C>: Request<C> {
     /// Modify itself to retrive the next response, of return `false` if the
     /// given response was the last one.
     fn advance(&mut self, response: &Self::Ok) -> bool;

@@ -44,7 +44,7 @@ impl<C> OneshotRequest<C> for Numbers {
     }
 }
 
-impl<C> RepeatableRequest<C> for Numbers {
+impl<C> Request<C> for Numbers {
     type Response = Resp;
 
     fn send(&self, _client: C) -> Self::Response {

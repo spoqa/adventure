@@ -1,13 +1,12 @@
-//! A base trait represents a request.
-use crate::request::{BaseRequest, RepeatableRequest};
+use crate::request::{BaseRequest, Request};
 use crate::response::Response;
 
-/// A generalized request-response interface, regardless how client works.
+/// A request that can be sent just once.
 pub trait OneshotRequest<C>: BaseRequest {
     /// The type of corresponding responses of this request.
     type Response: Response<Ok = Self::Ok, Error = Self::Error>;
 
-    /// Send this request using the given client.
+    /// Send this request to the given client, by consuming itself.
     fn send_once(self, client: C) -> Self::Response;
 }
 
@@ -46,7 +45,7 @@ where
 
 impl<R, C> OneshotRequest<C> for Oneshot<R>
 where
-    R: RepeatableRequest<C>,
+    R: Request<C>,
 {
     type Response = R::Response;
 

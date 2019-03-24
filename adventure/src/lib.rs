@@ -39,7 +39,7 @@
 //!     type Error = Error;
 //! }
 //!
-//! impl<'a> RepeatableRequest<&'a Client> for GetRepo<'_> {
+//! impl<'a> Request<&'a Client> for GetRepo<'_> {
 //!     // convenient wrapper for boxed futures
 //!     type Response = ResponseLocalFutureObj<'a, Self::Ok, Self::Error>;
 //!
@@ -94,6 +94,6 @@ pub mod retry;
 pub use crate::{
     oneshot::OneshotRequest,
     paginator::{PagedRequest, Paginator},
-    request::{BaseRequest, RepeatableRequest},
+    request::{BaseRequest, Request},
     response::Response,
 };

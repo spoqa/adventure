@@ -1,5 +1,5 @@
 use crate::oneshot::OneshotRequest;
-use crate::request::{BaseRequest, RepeatableRequest};
+use crate::request::{BaseRequest, Request};
 
 #[derive(Clone)]
 pub struct Repeat<R> {
@@ -34,7 +34,7 @@ where
     }
 }
 
-impl<R, C> RepeatableRequest<C> for Repeat<R>
+impl<R, C> Request<C> for Repeat<R>
 where
     R: OneshotRequest<C> + Clone,
 {

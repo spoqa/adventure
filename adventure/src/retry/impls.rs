@@ -5,7 +5,7 @@ use pin_utils::unsafe_pinned;
 
 use super::{error::RetryError, Backoff, ExponentialBackoff, RetriableRequest, Timer};
 use crate::oneshot::OneshotRequest;
-use crate::request::{BaseRequest, RepeatableRequest};
+use crate::request::{BaseRequest, Request};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
@@ -70,7 +70,7 @@ where
 impl<R, T, F, B, C> OneshotRequest<C> for Retrying<R, T, F, B>
 where
     Self: RetryMethod<C, Response = R::Response> + Unpin,
-    R: RepeatableRequest<C>,
+    R: Request<C>,
     R::Response: Unpin,
     C: Clone,
 {
@@ -119,7 +119,7 @@ pub trait RetryMethod<C> {
 
 impl<R, T, B, C> RetryMethod<C> for Retrying<R, T, (), B>
 where
-    R: RepeatableRequest<C> + RetriableRequest,
+    R: Request<C> + RetriableRequest,
     T: Timer,
     B: Backoff,
 {
@@ -149,7 +149,7 @@ where
 
 impl<R, T, F, B, C> RetryMethod<C> for Retrying<R, T, F, B>
 where
-    R: RepeatableRequest<C>,
+    R: Request<C>,
     T: Timer,
     F: FnMut(&R, &R::Error, Duration) -> bool,
     B: Backoff,
