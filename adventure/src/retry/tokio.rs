@@ -8,7 +8,7 @@ use crate::response::Response;
 use crate::task::{Compat, Poll, Waker};
 
 /// Provides a delayed response using [`tokio_timer`] crate.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct TokioTimer;
 
 /// A response that completes at a specified instant in time.

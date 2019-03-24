@@ -1,7 +1,9 @@
-mod error;
-mod impls;
+pub mod backoff;
 #[cfg(feature = "tokio-timer")]
 pub mod tokio;
+
+mod error;
+mod impls;
 
 use std::ops::Deref;
 use std::pin::Pin;
@@ -14,10 +16,10 @@ use crate::response::Response;
 #[doc(inline)]
 pub use self::tokio::TokioTimer;
 pub use self::{
+    backoff::{Backoff, ExponentialBackoff},
     error::RetryError,
     impls::{Retrial, RetrialPredicate, Retrying},
 };
-pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
 #[cfg(feature = "tokio-timer")]
 pub type RetryingTokio<R, B = ExponentialBackoff, F = ()> = Retrying<R, TokioTimer, B, F>;

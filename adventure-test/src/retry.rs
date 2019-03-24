@@ -74,7 +74,7 @@ where
 }
 
 #[test]
-fn retry_simple() {
+fn retry_send_once() {
     let numbers = Numbers {
         current: AtomicUsize::new(1),
         end: 5,
@@ -84,3 +84,15 @@ fn retry_simple() {
 
     assert_eq!(block_on(res).unwrap(), 5);
 }
+
+#[test]
+fn retry_clone() {
+    let numbers = Numbers {
+        current: AtomicUsize::new(1),
+        end: 5,
+    };
+    let cloned = (&numbers).retry().clone();
+
+    assert_eq!(block_on(cloned.send_once(())).unwrap(), 5);
+}
+

@@ -1,6 +1,16 @@
 0.3.0 (not released)
 --------------------
 
+### Breaking Changes
+
+ - `retry::ExponentialBackoff` is replaced to a wrapper type which implements
+   `Clone`, instead of reexporting from `backoff` crate.
+
+### Bug fixes
+
+ - The result of `RetriableRequest::retry` on will implement `Clone` if the
+   source request is implementing it. This makes applying other combinators on
+   the request much easier.
 
 0.2.0 (March 24, 2019)
 --------------------
