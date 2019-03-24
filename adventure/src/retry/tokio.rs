@@ -12,6 +12,7 @@ use crate::task::{Compat, Poll, Waker};
 pub struct TokioTimer;
 
 /// A response that completes at a specified instant in time.
+#[must_use = "responses do nothing unless polled"]
 pub struct Delay {
     inner: Compat<DelayImpl>,
 }

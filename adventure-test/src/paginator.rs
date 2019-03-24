@@ -80,22 +80,23 @@ macro_rules! test_cases {
         #[test]
         fn paginator_basic() {
             let client = MockClient::<Response>::new(|_| true);
-            let numbers = Numbers::new(1, 5);
+            let mut numbers = Numbers::new(1, 5);
             let current = Arc::clone(&numbers.current);
-            let paginator = numbers.paginate(&client);
+            let paginator = Pin::new(&mut numbers).paginate(&client);
 
             let responses = collect(paginator);
             assert_eq!(Ok(vec![1, 2, 3, 4, 5]), responses);
             assert_eq!(current.load(Ordering::SeqCst), 5);
+            assert_eq!(numbers.end, 5);
             assert_eq!(client.called.load(Ordering::SeqCst), 5);
         }
 
         #[test]
         fn paginator_basic_2() {
             let client = MockClient::<Response>::new(|n| n.current.load(Ordering::SeqCst) < 7);
-            let numbers = Numbers::new(1, 20);
+            let mut numbers = Numbers::new(1, 20);
             let current = Arc::clone(&numbers.current);
-            let paginator = numbers.paginate(&client);
+            let paginator = Pin::new(&mut numbers).paginate(&client);
 
             let responses = collect(paginator);
             assert_eq!(Err(()), responses);

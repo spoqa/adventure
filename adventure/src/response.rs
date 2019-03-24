@@ -83,6 +83,7 @@ mod impl_futures01 {
     use crate::task::{Compat, Poll, Waker};
 
     /// Converts a futures 0.1 [`Future`] into a [`Response`].
+    #[must_use = "responses do nothing unless polled"]
     pub struct Future01Response<F> {
         inner: Compat<F>,
     }
@@ -122,6 +123,7 @@ mod impl_futures01 {
 
     /// A [`Response`] wrapping a trait object of polling futures,
     /// similar to [`Box`]`<dyn `[`Future`]`>`.
+    #[must_use = "responses do nothing unless polled"]
     pub struct LocalFuture01ResponseObj<'a, T, E> {
         inner: Compat<Box<dyn Future<Item = T, Error = E> + 'a>>,
     }
@@ -150,6 +152,7 @@ mod impl_futures01 {
 
     /// A [`Response`] wrapping a trait object of polling futures,
     /// similar to [`Box`]`<dyn `[`Future`]` + `[`Send`]` + `[`Sync`]`>`.
+    #[must_use = "responses do nothing unless polled"]
     pub struct Future01ResponseObj<'a, T, E> {
         inner: Compat<Box<dyn Future<Item = T, Error = E> + Send + Sync + 'a>>,
     }
@@ -193,6 +196,7 @@ mod impl_std {
     use crate::task::{Poll, Waker};
 
     /// Converts a [`std::future::Future`] into a [`Response`].
+    #[must_use = "responses do nothing unless polled"]
     pub struct FutureResponse<F> {
         inner: F,
     }
@@ -230,6 +234,7 @@ mod impl_std {
 
     /// A [`Response`] wrapping a trait object of polling futures,
     /// similar to [`LocalFutureObj`].
+    #[must_use = "responses do nothing unless polled"]
     pub struct LocalFutureResponseObj<'a, T, E> {
         inner: LocalFutureObj<'a, Result<T, E>>,
     }
@@ -262,6 +267,7 @@ mod impl_std {
 
     /// A [`Response`] wrapping a trait object of polling futures,
     /// similar to [`FutureObj`].
+    #[must_use = "responses do nothing unless polled"]
     pub struct FutureResponseObj<'a, T, E> {
         inner: FutureObj<'a, Result<T, E>>,
     }

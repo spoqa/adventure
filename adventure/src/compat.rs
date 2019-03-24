@@ -9,6 +9,7 @@ impl<T> ResponseExt for T where T: Response {}
 
 /// Converts a `Response` to compatible with futures, both of futures 0.1
 /// and `std::future`.
+#[must_use = "futures do nothing unless polled"]
 pub struct IntoFuture<T>(T);
 
 impl<T> IntoFuture<T> {

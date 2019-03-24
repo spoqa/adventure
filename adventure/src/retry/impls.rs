@@ -225,6 +225,7 @@ where
 }
 
 /// Response for [`retry`](crate::util::RequestExt::retry) combinator.
+#[must_use = "responses do nothing unless polled"]
 pub struct Retrial<R, C>
 where
     R: RetryMethod<C>,
