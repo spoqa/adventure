@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use adventure::{
     paginator::{PagedRequest, Paginator},
     repeat::RepeatableRequest,
-    request::{BaseRequest, Request},
+    request::{BaseRequest, OneshotRequest},
 };
 
 struct MockClient<T> {
@@ -36,10 +36,10 @@ macro_rules! test_cases {
             type Error = ();
         }
 
-        impl Request<&MockClient<Response>> for &Numbers {
+        impl OneshotRequest<&MockClient<Response>> for &Numbers {
             type Response = Response;
 
-            fn into_response(self, client: &MockClient<Response>) -> Self::Response {
+            fn send_once(self, client: &MockClient<Response>) -> Self::Response {
                 self.send(client)
             }
         }

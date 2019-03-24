@@ -5,7 +5,7 @@ use pin_utils::unsafe_pinned;
 
 use super::{error::RetryError, Backoff, ExponentialBackoff, RetriableRequest, Timer};
 use crate::repeat::RepeatableRequest;
-use crate::request::{BaseRequest, Request};
+use crate::request::{BaseRequest, OneshotRequest};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
@@ -67,7 +67,7 @@ where
     type Error = RetryError<R::Error>;
 }
 
-impl<R, T, F, B, C> Request<C> for Retrying<R, T, F, B>
+impl<R, T, F, B, C> OneshotRequest<C> for Retrying<R, T, F, B>
 where
     Self: RetryMethod<C, Response = R::Response> + Unpin,
     R: RepeatableRequest<C>,
@@ -76,7 +76,7 @@ where
 {
     type Response = RetriableResponse<Self, C>;
 
-    fn into_response(self, client: C) -> Self::Response {
+    fn send_once(self, client: C) -> Self::Response {
         RetriableResponse {
             client,
             request: self,

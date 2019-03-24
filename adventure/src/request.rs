@@ -55,21 +55,21 @@ where
 }
 
 /// A generalized request-response interface, regardless how client works.
-pub trait Request<C>: BaseRequest {
+pub trait OneshotRequest<C>: BaseRequest {
     /// The type of corresponding responses of this request.
     type Response: Response<Ok = Self::Ok, Error = Self::Error>;
 
     /// Send this request using the given client.
-    fn into_response(self, client: C) -> Self::Response;
+    fn send_once(self, client: C) -> Self::Response;
 }
 
-impl<R, C> Request<C> for Box<R>
+impl<R, C> OneshotRequest<C> for Box<R>
 where
-    R: Request<C>,
+    R: OneshotRequest<C>,
 {
     type Response = R::Response;
-    fn into_response(self, client: C) -> Self::Response {
+    fn send_once(self, client: C) -> Self::Response {
         let inner = *self;
-        inner.into_response(client)
+        inner.send_once(client)
     }
 }

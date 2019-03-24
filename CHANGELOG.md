@@ -3,9 +3,9 @@
 
 ### Breaking Changes
 
- - `BaseRequest` is splitted from `Request`, and `RepeatableRequest` does not
-   extend `Request`. `Request` and `RepeatableRequest` will inherit the same
-   base trait.
+ - `Request` is splitted into `BaseRequest` and `OneshotRequest`.
+ - `RepeatableRequest` does not extend `OneshotRequest`. `OneshotRequest` and
+   `RepeatableRequest` will inherit the same base trait.
 
 ### New features
 

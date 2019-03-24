@@ -36,10 +36,10 @@ impl BaseRequest for Numbers {
     type Error = String;
 }
 
-impl<C> Request<C> for Numbers {
+impl<C> OneshotRequest<C> for Numbers {
     type Response = Resp;
 
-    fn into_response(self, client: C) -> Self::Response {
+    fn send_once(self, client: C) -> Self::Response {
         self.send(client)
     }
 }
@@ -80,7 +80,7 @@ fn retry_simple() {
         end: 5,
     };
     pin_mut!(numbers);
-    let res = numbers.with_backoff().into_response(());
+    let res = numbers.with_backoff().send_once(());
 
     assert_eq!(block_on(res).unwrap(), 5);
 }

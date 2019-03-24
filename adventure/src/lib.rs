@@ -69,7 +69,7 @@
 //! let request = GetRepo { owner: "spoqa", repo: "adventure" };
 //! let response = request
 //!     .with_backoff()
-//!     .into_response(&client);
+//!     .send_once(&client);
 //! let repo = block_on_all(response.into_future())?;
 //! assert_eq!(repo.description, "Helps your great adventure for the various type of requests.");
 //! # Ok::<_, Box<dyn std::error::Error>>(())
@@ -92,6 +92,7 @@ pub mod retry;
 #[doc(inline)]
 pub use crate::{
     paginator::{PagedRequest, Paginator},
-    request::Request,
+    repeat::RepeatableRequest,
+    request::{BaseRequest, OneshotRequest},
     response::Response,
 };

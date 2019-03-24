@@ -5,7 +5,7 @@
 
 pub use crate::paginator::PagedRequest;
 pub use crate::repeat::RepeatableRequest;
-pub use crate::request::{BaseRequest, Request};
+pub use crate::request::{BaseRequest, OneshotRequest};
 pub use crate::response::Response;
 pub use crate::retry::RetriableRequest;
 pub use crate::util::{RequestExt, ResponseExt};

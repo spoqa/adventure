@@ -3,7 +3,7 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::request::{BaseRequest, Request};
+use crate::request::{BaseRequest, OneshotRequest};
 use crate::response::Response;
 
 pub trait RepeatableRequest<C>: BaseRequest {
@@ -86,25 +86,25 @@ where
     type Error = R::Error;
 }
 
-impl<R, C> Request<C> for Repeat<R>
+impl<R, C> OneshotRequest<C> for Repeat<R>
 where
-    R: Request<C> + Clone,
+    R: OneshotRequest<C> + Clone,
 {
     type Response = R::Response;
 
-    fn into_response(self, client: C) -> Self::Response {
-        self.inner.into_response(client)
+    fn send_once(self, client: C) -> Self::Response {
+        self.inner.send_once(client)
     }
 }
 
 impl<R, C> RepeatableRequest<C> for Repeat<R>
 where
-    R: Request<C> + Clone,
+    R: OneshotRequest<C> + Clone,
 {
     type Response = R::Response;
 
     fn send(&self, client: C) -> Self::Response {
-        self.inner.clone().into_response(client)
+        self.inner.clone().send_once(client)
     }
 }
 
@@ -130,13 +130,13 @@ where
     type Error = R::Error;
 }
 
-impl<R, C> Request<C> for Oneshot<R>
+impl<R, C> OneshotRequest<C> for Oneshot<R>
 where
     R: RepeatableRequest<C>,
 {
     type Response = R::Response;
 
-    fn into_response(self, client: C) -> Self::Response {
+    fn send_once(self, client: C) -> Self::Response {
         self.inner.send(client)
     }
 }
