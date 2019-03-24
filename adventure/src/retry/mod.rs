@@ -15,12 +15,29 @@ use crate::response::Response;
 pub use self::tokio::TokioTimer;
 pub use self::{
     error::RetryError,
-    impls::{Retrial, Retrying},
+    impls::{Retrial, RetrialPredicate, Retrying},
 };
 pub use backoff::{backoff::Backoff, ExponentialBackoff};
 
 pub trait RetriableRequest: BaseRequest {
     fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool;
+
+    #[cfg(feature = "tokio-timer")]
+    fn retry(self) -> Retrying<Self, TokioTimer>
+    where
+        Self: Sized,
+    {
+        Retrying::from_default(self)
+    }
+
+    #[cfg(feature = "tokio-timer")]
+    fn retry_with_backoff<B>(self, backoff: B) -> Retrying<Self, TokioTimer, (), B>
+    where
+        Self: BaseRequest + Sized,
+        B: Backoff,
+    {
+        Retrying::new(self, Default::default(), backoff)
+    }
 }
 
 impl<R> RetriableRequest for &R

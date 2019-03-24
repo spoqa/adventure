@@ -1,3 +1,4 @@
+use crate::repeat::Repeat;
 use crate::request::{BaseRequest, Request};
 use crate::response::Response;
 
@@ -8,6 +9,13 @@ pub trait OneshotRequest<C>: BaseRequest {
 
     /// Send this request to the given client, by consuming itself.
     fn send_once(self, client: C) -> Self::Response;
+
+    fn repeat(self) -> Repeat<Self>
+    where
+        Self: Clone,
+    {
+        Repeat::from(self)
+    }
 }
 
 impl<R, C> OneshotRequest<C> for Box<R>

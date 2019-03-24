@@ -9,6 +9,47 @@ use crate::request::{BaseRequest, Request};
 use crate::response::Response;
 use crate::task::{Poll, Waker};
 
+pub trait RetrialPredicate<R>
+where
+    R: BaseRequest,
+{
+    fn should_retry(
+        &self,
+        req: &R,
+        err: &<R as BaseRequest>::Error,
+        next_interval: Duration,
+    ) -> bool;
+}
+
+impl<F, R> RetrialPredicate<R> for F
+where
+    R: BaseRequest,
+    F: Fn(&R, &<R as BaseRequest>::Error, Duration) -> bool,
+{
+    fn should_retry(
+        &self,
+        req: &R,
+        err: &<R as BaseRequest>::Error,
+        next_interval: Duration,
+    ) -> bool {
+        (self)(req, err, next_interval)
+    }
+}
+
+impl<R> RetrialPredicate<R> for ()
+where
+    R: RetriableRequest,
+{
+    fn should_retry(
+        &self,
+        req: &R,
+        err: &<R as BaseRequest>::Error,
+        next_interval: Duration,
+    ) -> bool {
+        req.should_retry(err, next_interval)
+    }
+}
+
 #[derive(Clone)]
 pub struct Retrying<R, T, F = (), B = ExponentialBackoff> {
     inner: R,
@@ -45,7 +86,7 @@ where
 
     pub(crate) fn with_predicate<F>(self, pred: F) -> Retrying<R, T, F, B>
     where
-        F: Fn(&R, &<R as BaseRequest>::Error, Duration) -> bool,
+        F: RetrialPredicate<R>,
     {
         Retrying {
             inner: self.inner,
@@ -115,41 +156,11 @@ pub trait RetryMethod<C> {
     }
 }
 
-impl<R, T, B, C> RetryMethod<C> for Retrying<R, T, (), B>
-where
-    R: Request<C> + RetriableRequest,
-    T: Timer,
-    B: Backoff,
-{
-    type Response = R::Response;
-    type Delay = T::Delay;
-
-    fn send(&self, client: C) -> Self::Response {
-        self.inner.send(client)
-    }
-
-    fn next_backoff(&mut self) -> Option<Duration> {
-        self.backoff.next_backoff()
-    }
-
-    fn check_retry(
-        &mut self,
-        err: &<Self::Response as Response>::Error,
-        next_interval: Duration,
-    ) -> bool {
-        self.inner.should_retry(err, next_interval)
-    }
-
-    fn expires_in(&mut self, next_duration: Duration) -> Self::Delay {
-        self.timer.expires_in(next_duration)
-    }
-}
-
 impl<R, T, F, B, C> RetryMethod<C> for Retrying<R, T, F, B>
 where
     R: Request<C>,
     T: Timer,
-    F: FnMut(&R, &R::Error, Duration) -> bool,
+    F: RetrialPredicate<R>,
     B: Backoff,
 {
     type Response = R::Response;
@@ -168,7 +179,7 @@ where
         err: &<Self::Response as Response>::Error,
         next_interval: Duration,
     ) -> bool {
-        (self.pred)(&self.inner, err, next_interval)
+        self.pred.should_retry(&self.inner, err, next_interval)
     }
 
     fn expires_in(&mut self, next_duration: Duration) -> Self::Delay {

@@ -2,6 +2,7 @@
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 
+use crate::compat::IntoFuture;
 use crate::task::{Poll, Waker};
 
 #[cfg(feature = "futures01")]
@@ -19,6 +20,19 @@ pub trait Response {
 
     /// Poll this [`Response`].
     fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>>;
+
+    /// Wrap this response into a type that can work with futures.
+    ///
+    /// It is compatible with both types of futures 0.1 [`Future`] and
+    /// [`std::future::Future`].
+    ///
+    /// [`Future`]: futures::future::Future
+    fn into_future(self) -> IntoFuture<Self>
+    where
+        Self: Sized,
+    {
+        IntoFuture::new(self)
+    }
 }
 
 impl<P> Response for Pin<P>

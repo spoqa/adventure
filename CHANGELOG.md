@@ -8,17 +8,17 @@
  - `RepeatableRequest` is renamed to `Request`, and extends `BaseRequest`
    instead `OneshotRequest`. Therefore, both of `Request` and `OneshotRequest`
    will have the same base trait.
+ - `std-futures` feature is renamed to `std-future`.
 
 ### New features
 
- - `RequestExt` trait is added in the prelude.
- - `RequestExt::repeat` is added to transform a request implementing `Clone`
-   into a repeatable request.
- - `RequestExt::with_backoff` is added to provide retry behavior with
-   exponential backoff.
- - Any type of `Response` can be converted into futures 0.1 `Future`, or
+ - `OneshotRequest::repeat` is added to transform a oneshot request
+   implementing `Clone` to be repeatable.
+ - `RetriableRequest` is added to provide retrial behavior with a customizable
+   strategy, like exponential backoff.
+ - `Response::into_future` is added to convert into futures 0.1 `Future`, or
    `std::future::Future`.
- - Implementation of `Request`, `Response`, and related traits for pointer
+ - Implementation of `BaseRequest`, `Response`, and related traits for pointer
    types are added.
 
 ### Bug fixes
@@ -27,7 +27,6 @@
    `Response::poll` will be not ignored even if it is polled from futures 0.1
    or goes into them. It will prevent a potential freezing bug.
  - `Response::Waker` associated type is removed.
- - `std-futures` feature is renamed to `std-future`.
 
 0.1.0 (March 22, 2019)
 ----------------------

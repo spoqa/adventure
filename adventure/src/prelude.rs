@@ -8,4 +8,3 @@ pub use crate::paginator::PagedRequest;
 pub use crate::request::{BaseRequest, Request};
 pub use crate::response::Response;
 pub use crate::retry::RetriableRequest;
-pub use crate::util::{RequestExt, ResponseExt};

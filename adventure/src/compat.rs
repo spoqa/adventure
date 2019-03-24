@@ -1,99 +1,21 @@
 /// Utilities for working with `Request` and `Response` traits.
-use std::time::Duration;
-
-use crate::oneshot::Oneshot;
-use crate::repeat::Repeat;
-use crate::request::BaseRequest;
 use crate::response::Response;
-#[cfg(feature = "tokio-timer")]
-use crate::retry::TokioTimer;
-use crate::retry::{Backoff, RetriableRequest, Retrying, Timer};
-
-/// An extension trait for `Request` and `OneshotRequest`s that provides a
-/// variety of convenient adapters.
-pub trait RequestExt {
-    type Ok;
-    type Error;
-
-    fn repeat(self) -> Repeat<Self>
-    where
-        Self: Clone,
-    {
-        Repeat::from(self)
-    }
-
-    fn oneshot(self) -> Oneshot<Self>
-    where
-        Self: Sized,
-    {
-        Oneshot::from(self)
-    }
-
-    #[cfg(feature = "tokio-timer")]
-    fn retry(self) -> Retrying<Self, TokioTimer>
-    where
-        Self: RetriableRequest + Sized,
-    {
-        Retrying::from_default(self)
-    }
-
-    #[cfg(feature = "tokio-timer")]
-    fn retry_if<F>(self, pred: F) -> Retrying<Self, TokioTimer, F>
-    where
-        Self: BaseRequest + Sized,
-        F: Fn(&Self, &<Self as BaseRequest>::Error, Duration) -> bool,
-    {
-        Retrying::from_default(self).with_predicate(pred)
-    }
-
-    #[cfg(feature = "tokio-timer")]
-    fn retry_with_backoff<B>(self, backoff: B) -> Retrying<Self, TokioTimer, (), B>
-    where
-        Self: BaseRequest + Sized,
-        B: Backoff,
-    {
-        Retrying::new(self, Default::default(), backoff)
-    }
-
-    fn retry_with_config<T, F, B>(self, timer: T, pred: F, backoff: B) -> Retrying<Self, T, F, B>
-    where
-        Self: BaseRequest + Sized,
-        T: Timer + Unpin,
-        F: Fn(&Self, &<Self as BaseRequest>::Error, Duration) -> bool,
-        B: Backoff,
-    {
-        Retrying::new(self, timer, backoff).with_predicate(pred)
-    }
-}
-
-impl<T> RequestExt for T
-where
-    T: BaseRequest,
-{
-    type Ok = T::Ok;
-    type Error = T::Error;
-}
 
 /// An extension trait for `Response`s that provides a variety of convenient
 /// adapters.
-pub trait ResponseExt {
-    /// Wrap this response into a type that can work with futures.
-    ///
-    /// It is compatible with both types of futures 0.1 [`Future`] and
-    /// [`std::future::Future`].
-    fn into_future(self) -> IntoFuture<Self>
-    where
-        Self: Sized,
-    {
-        IntoFuture(self)
-    }
-}
+pub trait ResponseExt {}
 
 impl<T> ResponseExt for T where T: Response {}
 
 /// Converts a `Response` to compatible with futures, both of futures 0.1
 /// and `std::future`.
 pub struct IntoFuture<T>(T);
+
+impl<T> IntoFuture<T> {
+    pub(crate) fn new(fut: T) -> Self {
+        IntoFuture(fut)
+    }
+}
 
 #[cfg(feature = "futures01")]
 mod impl_futures01 {

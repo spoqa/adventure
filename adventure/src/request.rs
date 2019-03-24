@@ -4,7 +4,13 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::oneshot::Oneshot;
 use crate::response::Response;
+
+#[cfg(all(feature = "backoff", feature = "tokio-timer"))]
+use crate::retry::TokioTimer;
+#[cfg(feature = "backoff")]
+use crate::retry::{Backoff, RetrialPredicate, Retrying, Timer};
 
 /// Trait to represent types of the request, and their expected output and
 /// error types.
@@ -65,6 +71,33 @@ pub trait Request<C>: BaseRequest {
     type Response: Response<Ok = Self::Ok, Error = Self::Error>;
 
     fn send(&self, client: C) -> Self::Response;
+
+    fn oneshot(self) -> Oneshot<Self>
+    where
+        Self: Sized,
+    {
+        Oneshot::from(self)
+    }
+
+    #[cfg(all(feature = "backoff", feature = "tokio-timer"))]
+    fn retry_if<F>(self, pred: F) -> Retrying<Self, TokioTimer, F>
+    where
+        Self: Sized,
+        F: RetrialPredicate<Self>,
+    {
+        Retrying::from_default(self).with_predicate(pred)
+    }
+
+    #[cfg(feature = "backoff")]
+    fn retry_with_config<T, F, B>(self, timer: T, pred: F, backoff: B) -> Retrying<Self, T, F, B>
+    where
+        Self: Sized,
+        T: Timer + Unpin,
+        F: RetrialPredicate<Self>,
+        B: Backoff,
+    {
+        Retrying::new(self, timer, backoff).with_predicate(pred)
+    }
 }
 
 impl<R, C> Request<C> for &R
