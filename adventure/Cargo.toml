@@ -1,10 +1,10 @@
 [package]
 workspace = ".."
 name = "adventure"
-version = "0.2.0-alpha.0"
+version = "0.2.0"
 description = "Helps your great adventure for the various type of requests."
 repository = "https://github.com/spoqa/adventure"
-readme = "README.md"
+readme = "../README.md"
 categories = [
     "asynchronous",
     "api-bindings",
