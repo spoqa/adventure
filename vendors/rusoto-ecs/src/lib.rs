@@ -15,6 +15,8 @@
 //!     .paginate(Arc::new(client))
 use std::ops::Deref;
 use std::pin::Pin;
+use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use adventure::{
@@ -31,6 +33,69 @@ pub type RusotoResponse<R> =
 #[derive(Clone, Debug)]
 pub struct AwsEcs<T> {
     inner: T,
+}
+
+pub trait AsEcs {
+    type Output: Ecs + ?Sized;
+    fn as_ecs(&self) -> &Self::Output;
+}
+
+impl AsEcs for EcsClient {
+    type Output = EcsClient;
+    fn as_ecs(&self) -> &EcsClient {
+        self
+    }
+}
+
+impl<T: ?Sized> AsEcs for &T
+where
+    T: Ecs,
+{
+    type Output = T;
+    fn as_ecs(&self) -> &Self::Output {
+        &**self
+    }
+}
+
+impl<T: ?Sized> AsEcs for Box<T>
+where
+    T: Ecs,
+{
+    type Output = T;
+    fn as_ecs(&self) -> &Self::Output {
+        &**self
+    }
+}
+
+impl<T: ?Sized> AsEcs for Arc<T>
+where
+    T: Ecs,
+{
+    type Output = T;
+    fn as_ecs(&self) -> &Self::Output {
+        &**self
+    }
+}
+
+impl<T: ?Sized> AsEcs for Rc<T>
+where
+    T: Ecs,
+{
+    type Output = T;
+    fn as_ecs(&self) -> &Self::Output {
+        &**self
+    }
+}
+
+impl<P> AsEcs for Pin<P>
+where
+    P: Deref,
+    <P as Deref>::Target: Ecs,
+{
+    type Output = <P as Deref>::Target;
+    fn as_ecs(&self) -> &Self::Output {
+        &**self
+    }
 }
 
 macro_rules! impl_adventure {
@@ -76,20 +141,20 @@ macro_rules! impl_adventure {
         impl_adventure!(@ $wrapper, $name, $client; $($rest)*);
     };
     (@ $wrapper:ident, $name:ident, $client:ident; send: $method:ident; $($rest:tt)*) => {
-        impl<P> OneshotRequest<P> for $wrapper<$name> where P: Deref, <P as Deref>::Target: $client {
+        impl<C> OneshotRequest<C> for $wrapper<$name> where C: AsEcs {
             type Response = RusotoResponse<Self>;
 
-            fn send_once(self, client: P) -> Self::Response {
-                Future01Response::new(client.$method(self.inner))
+            fn send_once(self, client: C) -> Self::Response {
+                Future01Response::new(client.as_ecs().$method(self.inner))
             }
         }
 
-        impl<P> Request<P> for $wrapper<$name> where P: Deref, <P as Deref>::Target: $client {
+        impl<C> Request<C> for $wrapper<$name> where C: AsEcs {
             type Response = RusotoResponse<Self>;
 
             #[inline]
-            fn send(self: Pin<&mut Self>, client: P) -> Self::Response {
-                self.as_ref().get_ref().clone().send_once(client)
+            fn send(&self, client: C) -> Self::Response {
+                self.clone().send_once(client)
             }
         }
 
