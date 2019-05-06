@@ -1,4 +1,5 @@
 use std::pin::Pin;
+use std::task::Context;
 use std::time::Duration;
 
 use pin_utils::unsafe_pinned;
@@ -8,7 +9,7 @@ use crate::oneshot::OneshotRequest;
 use crate::paginator::PagedRequest;
 use crate::request::{BaseRequest, Request};
 use crate::response::Response;
-use crate::task::{Poll, Waker};
+use crate::task::Poll;
 
 pub trait RetrialPredicate<R>
 where
@@ -253,8 +254,8 @@ where
     type Ok = <R::Response as Response>::Ok;
     type Error = RetryError<WaitError<R, C>>;
 
-    fn poll(self: Pin<&mut Self>, waker: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-        self.poll_impl(waker)
+    fn poll(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Result<Self::Ok, Self::Error>> {
+        self.poll_impl(ctx)
     }
 }
 
@@ -270,10 +271,10 @@ where
 
     fn poll_impl(
         mut self: Pin<&mut Self>,
-        waker: &Waker,
+        ctx: &mut Context<'_>,
     ) -> Poll<Result<<R::Response as Response>::Ok, RetryError<WaitError<R, C>>>> {
         if let Some(w) = self.as_mut().wait().as_pin_mut() {
-            match w.poll(waker) {
+            match w.poll(ctx) {
                 Poll::Pending => {
                     return Poll::Pending;
                 }
@@ -297,7 +298,7 @@ where
             .next()
             .as_pin_mut()
             .expect("Assertion failed")
-            .poll(waker)
+            .poll(ctx)
         {
             Poll::Pending => Poll::Pending,
             Poll::Ready(Ok(resp)) => Poll::Ready(Ok(resp)),
@@ -306,7 +307,7 @@ where
                 match self.as_mut().request().get_mut().next_wait(e) {
                     Ok(w) => {
                         self.as_mut().wait().set(Some(w));
-                        self.poll_impl(waker)
+                        self.poll_impl(ctx)
                     }
                     Err(e) => Poll::Ready(Err(e)),
                 }

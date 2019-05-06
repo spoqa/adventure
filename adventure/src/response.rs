@@ -1,9 +1,10 @@
 //! A trait of responses and common adaptors.
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
+use std::task::Context;
 
 use crate::compat::IntoFuture;
-use crate::task::{Poll, Waker};
+use crate::task::Poll;
 
 #[cfg(feature = "futures01")]
 pub use self::impl_futures01::*;
@@ -19,7 +20,7 @@ pub trait Response {
     type Error;
 
     /// Poll this [`Response`].
-    fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>>;
+    fn poll(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Result<Self::Ok, Self::Error>>;
 
     /// Wrap this response into a type that can work with futures.
     ///
@@ -42,9 +43,9 @@ where
 {
     type Ok = <<P as Deref>::Target as Response>::Ok;
     type Error = <<P as Deref>::Target as Response>::Error;
-    fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+    fn poll(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Result<Self::Ok, Self::Error>> {
         let p: Pin<&mut <P as Deref>::Target> = Pin::get_mut(self).as_mut();
-        Response::poll(p, w)
+        Response::poll(p, ctx)
     }
 }
 
@@ -54,9 +55,12 @@ where
 {
     type Ok = R::Ok;
     type Error = R::Error;
-    fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+    fn poll(
+        mut self: Pin<&mut Self>,
+        ctx: &mut Context<'_>,
+    ) -> Poll<Result<Self::Ok, Self::Error>> {
         let p: Pin<&mut R> = Pin::new(&mut **self);
-        Response::poll(p, w)
+        Response::poll(p, ctx)
     }
 }
 
@@ -66,21 +70,25 @@ where
 {
     type Ok = R::Ok;
     type Error = R::Error;
-    fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+    fn poll(
+        mut self: Pin<&mut Self>,
+        ctx: &mut Context<'_>,
+    ) -> Poll<Result<Self::Ok, Self::Error>> {
         let p: Pin<&mut R> = Pin::new(&mut **self);
-        Response::poll(p, w)
+        Response::poll(p, ctx)
     }
 }
 
 #[cfg(feature = "futures01")]
 mod impl_futures01 {
     use std::pin::Pin;
+    use std::task::Context;
 
     use futures::Future;
     use pin_utils::unsafe_pinned;
 
     use super::Response;
-    use crate::task::{Compat, Poll, Waker};
+    use crate::task::{Compat, Poll};
 
     /// Converts a futures 0.1 [`Future`] into a [`Response`].
     #[must_use = "responses do nothing unless polled"]
@@ -116,8 +124,11 @@ mod impl_futures01 {
         type Ok = F::Item;
         type Error = F::Error;
 
-        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            self.inner().poll(w)
+        fn poll(
+            self: Pin<&mut Self>,
+            ctx: &mut Context<'_>,
+        ) -> Poll<Result<Self::Ok, Self::Error>> {
+            self.inner().poll(ctx)
         }
     }
 
@@ -145,8 +156,11 @@ mod impl_futures01 {
         type Ok = T;
         type Error = E;
 
-        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            self.inner().poll(w)
+        fn poll(
+            self: Pin<&mut Self>,
+            ctx: &mut Context<'_>,
+        ) -> Poll<Result<Self::Ok, Self::Error>> {
+            self.inner().poll(ctx)
         }
     }
 
@@ -174,8 +188,11 @@ mod impl_futures01 {
         type Ok = T;
         type Error = E;
 
-        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            self.inner().poll(w)
+        fn poll(
+            self: Pin<&mut Self>,
+            ctx: &mut Context<'_>,
+        ) -> Poll<Result<Self::Ok, Self::Error>> {
+            self.inner().poll(ctx)
         }
     }
 
@@ -193,7 +210,7 @@ mod impl_std {
     use pin_utils::unsafe_pinned;
 
     use super::Response;
-    use crate::task::{Poll, Waker};
+    use crate::task::{Context, Poll};
 
     /// Converts a [`std::future::Future`] into a [`Response`].
     #[must_use = "responses do nothing unless polled"]
@@ -227,8 +244,11 @@ mod impl_std {
         type Ok = F::Ok;
         type Error = F::Error;
 
-        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            TryFuture::try_poll(self.inner(), w)
+        fn poll(
+            self: Pin<&mut Self>,
+            ctx: &mut Context<'_>,
+        ) -> Poll<Result<Self::Ok, Self::Error>> {
+            TryFuture::try_poll(self.inner(), ctx)
         }
     }
 
@@ -260,8 +280,11 @@ mod impl_std {
         type Ok = T;
         type Error = E;
 
-        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            TryFuture::try_poll(self.inner(), w)
+        fn poll(
+            self: Pin<&mut Self>,
+            ctx: &mut Context<'_>,
+        ) -> Poll<Result<Self::Ok, Self::Error>> {
+            TryFuture::try_poll(self.inner(), ctx)
         }
     }
 
@@ -293,8 +316,11 @@ mod impl_std {
         type Ok = T;
         type Error = E;
 
-        fn poll(self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            TryFuture::try_poll(self.inner(), w)
+        fn poll(
+            self: Pin<&mut Self>,
+            ctx: &mut Context<'_>,
+        ) -> Poll<Result<Self::Ok, Self::Error>> {
+            TryFuture::try_poll(self.inner(), ctx)
         }
     }
 }

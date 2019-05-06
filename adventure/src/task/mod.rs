@@ -2,7 +2,7 @@
 
 #[cfg(feature = "std-future")]
 mod internal {
-    pub use std::task::{Poll, Waker};
+    pub use std::task::{Context, Poll, Waker};
 }
 
 #[cfg(not(feature = "std-future"))]
@@ -77,12 +77,18 @@ mod internal_futures01 {
         type Error = T::Error;
 
         #[cfg(feature = "std-future")]
-        fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-            Pin::new(&mut self.inner).poll(w)
+        fn poll(
+            mut self: Pin<&mut Self>,
+            ctx: &mut Context<'_>,
+        ) -> Poll<Result<Self::Ok, Self::Error>> {
+            Pin::new(&mut self.inner).poll(ctx)
         }
 
         #[cfg(not(feature = "std-future"))]
-        fn poll(self: Pin<&mut Self>, _w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
+        fn poll(
+            self: Pin<&mut Self>,
+            _ctx: &mut Context<'_>,
+        ) -> Poll<Result<Self::Ok, Self::Error>> {
             convert_01_to_std(Future01::poll(self.inner()))
         }
     }

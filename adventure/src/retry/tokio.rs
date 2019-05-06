@@ -1,11 +1,12 @@
 use std::pin::Pin;
+use std::task::Context;
 use std::time::{Duration, Instant};
 
 use tokio_timer::Delay as DelayImpl;
 
 use super::{RetryError, Timer};
 use crate::response::Response;
-use crate::task::{Compat, Poll, Waker};
+use crate::task::{Compat, Poll};
 
 /// Provides a delayed response using [`tokio_timer`] crate.
 #[derive(Clone, Default)]
@@ -33,8 +34,11 @@ impl Response for Delay {
     type Ok = ();
     type Error = RetryError;
 
-    fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Result<Self::Ok, Self::Error>> {
-        let r = match Response::poll(Pin::new(&mut self.inner), w) {
+    fn poll(
+        mut self: Pin<&mut Self>,
+        ctx: &mut Context<'_>,
+    ) -> Poll<Result<Self::Ok, Self::Error>> {
+        let r = match Response::poll(Pin::new(&mut self.inner), ctx) {
             Poll::Pending => {
                 return Poll::Pending;
             }

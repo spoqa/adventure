@@ -1,11 +1,12 @@
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
+use std::task::Context;
 
 use pin_utils::unsafe_pinned;
 
 use crate::request::{BaseRequest, Request};
 use crate::response::Response;
-use crate::task::{Poll, Waker};
+use crate::task::Poll;
 
 /// A request able to send subsequent requests to enumerate the entire result.
 pub trait PagedRequest: BaseRequest {
@@ -79,7 +80,10 @@ where
     C: Clone,
     R: PagedRequest + Request<C> + Unpin,
 {
-    fn poll_next(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Option<Result<R::Ok, R::Error>>> {
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        ctx: &mut Context<'_>,
+    ) -> Poll<Option<Result<R::Ok, R::Error>>> {
         if self.as_mut().next().is_none() {
             let client = self.client.clone();
             if let Some(request) = self.as_mut().request().as_pin_mut() {
@@ -93,7 +97,7 @@ where
         assert!(self.as_mut().next().is_some());
         assert!(self.as_mut().request().is_some());
 
-        let page = match self.as_mut().next().as_pin_mut().unwrap().poll(waker) {
+        let page = match self.as_mut().next().as_pin_mut().unwrap().poll(ctx) {
             Poll::Pending => return Poll::Pending,
             Poll::Ready(Ok(x)) => x,
             Poll::Ready(Err(e)) => {
@@ -119,12 +123,13 @@ where
 #[cfg(all(feature = "futures01", not(feature = "std-future")))]
 mod impl_futures01 {
     use std::pin::Pin;
+    use std::task::Context;
 
     use futures::{Async, Poll, Stream};
 
     use super::{PagedRequest, Paginator};
     use crate::request::Request;
-    use crate::task::Waker;
+    use crate::task::noop_waker_ref;
 
     impl<C, R> Stream for Paginator<C, R>
     where
@@ -136,8 +141,8 @@ mod impl_futures01 {
 
         fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
             use crate::task::Poll::*;
-            let w = unsafe { Waker::blank() };
-            match Paginator::poll_next(Pin::new(self), &w) {
+            let mut ctx = Context::from_waker(noop_waker_ref());
+            match Paginator::poll_next(Pin::new(self), &mut ctx) {
                 Ready(Some(Ok(i))) => Ok(Async::Ready(Some(i))),
                 Ready(Some(Err(e))) => Err(e),
                 Ready(None) => Ok(Async::Ready(None)),
@@ -150,8 +155,9 @@ mod impl_futures01 {
 #[cfg(feature = "std-future")]
 mod impl_std {
     use std::pin::Pin;
+    use std::task::Context;
 
-    use futures_core::{task::Waker, Stream};
+    use futures_core::Stream;
 
     use super::{PagedRequest, Paginator};
     use crate::request::Request;
@@ -164,8 +170,8 @@ mod impl_std {
     {
         type Item = Result<R::Ok, R::Error>;
 
-        fn poll_next(self: Pin<&mut Self>, w: &Waker) -> Poll<Option<Self::Item>> {
-            Paginator::poll_next(self, w)
+        fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            Paginator::poll_next(self, ctx)
         }
     }
 }

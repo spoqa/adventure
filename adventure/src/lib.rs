@@ -75,7 +75,6 @@
 //! # Ok::<_, Box<dyn std::error::Error>>(())
 //! # })().unwrap(); }
 //! ```
-#![cfg_attr(feature = "std-future", feature(futures_api))]
 #![deny(rust_2018_idioms)]
 
 pub mod compat;

@@ -35,7 +35,9 @@ mod impl_futures01 {
         type Error = T::Error;
 
         fn poll(&mut self) -> Poll01<Self::Item, Self::Error> {
-            internal::with_context(self, |inner, w| convert_std_to_01(Response::poll(inner, w)))
+            internal::with_context(self, |inner, ctx| {
+                convert_std_to_01(Response::poll(inner, ctx))
+            })
         }
     }
 
@@ -46,13 +48,36 @@ mod impl_futures01 {
         use std::mem;
         use std::pin::Pin;
         use std::sync::Arc;
-        use std::task::{RawWaker, RawWakerVTable};
+        use std::task::{Context, RawWaker, RawWakerVTable};
 
         use futures::task as task01;
         use futures_util::task::{ArcWake, WakerRef};
 
         use super::IntoFuture;
         use crate::task::Waker;
+
+        unsafe fn ptr_to_current<'a>(ptr: *const ()) -> &'a Current {
+            &*(ptr as *const Current)
+        }
+        fn current_to_ptr(current: &Current) -> *const () {
+            current as *const Current as *const ()
+        }
+
+        unsafe fn clone(ptr: *const ()) -> RawWaker {
+            // Lazily create the `Arc` only when the waker is actually cloned.
+            // FIXME: remove `transmute` when a `Waker` -> `RawWaker` conversion
+            // function is landed in `core`.
+            mem::transmute::<Waker, RawWaker>(Arc::new(ptr_to_current(ptr).clone()).into_waker())
+        }
+        unsafe fn drop(_: *const ()) {}
+        unsafe fn wake(ptr: *const ()) {
+            ptr_to_current(ptr).0.notify()
+        }
+        unsafe fn wake_by_ref(ptr: *const ()) {
+            ptr_to_current(ptr).0.notify()
+        }
+
+        const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
 
         #[derive(Clone)]
         struct Current(task01::Task);
@@ -63,34 +88,13 @@ mod impl_futures01 {
             }
 
             fn as_waker(&self) -> WakerRef<'_> {
-                unsafe fn ptr_to_current<'a>(ptr: *const ()) -> &'a Current {
-                    &*(ptr as *const Current)
-                }
-                fn current_to_ptr(current: &Current) -> *const () {
-                    current as *const Current as *const ()
-                }
-
-                unsafe fn clone(ptr: *const ()) -> RawWaker {
-                    // Lazily create the `Arc` only when the waker is actually cloned.
-                    // FIXME: remove `transmute` when a `Waker` -> `RawWaker` conversion
-                    // function is landed in `core`.
-                    mem::transmute::<Waker, RawWaker>(
-                        Arc::new(ptr_to_current(ptr).clone()).into_waker(),
-                    )
-                }
-                unsafe fn drop(_: *const ()) {}
-                unsafe fn wake(ptr: *const ()) {
-                    ptr_to_current(ptr).0.notify()
-                }
-
                 let ptr = current_to_ptr(self);
-                let vtable = &RawWakerVTable { clone, drop, wake };
-                unsafe { WakerRef::new(Waker::new_unchecked(RawWaker::new(ptr, vtable))) }
+                unsafe { WakerRef::new(Waker::from_raw(RawWaker::new(ptr, &VTABLE))) }
             }
         }
 
         impl ArcWake for Current {
-            fn wake(arc_self: &Arc<Self>) {
+            fn wake_by_ref(arc_self: &Arc<Self>) {
                 arc_self.0.notify();
             }
         }
@@ -98,29 +102,31 @@ mod impl_futures01 {
         pub(super) fn with_context<T, R, F>(fut: &mut IntoFuture<T>, f: F) -> R
         where
             T: Unpin,
-            F: FnOnce(Pin<&mut T>, &Waker) -> R,
+            F: FnOnce(Pin<&mut T>, &mut Context<'_>) -> R,
         {
             let current = Current::new();
             let waker = current.as_waker();
-            f(Pin::new(&mut fut.0), &waker)
+            let mut ctx = Context::from_waker(&waker);
+            f(Pin::new(&mut fut.0), &mut ctx)
         }
     }
 
     #[cfg(not(feature = "std-future"))]
     mod internal {
         use std::pin::Pin;
+        use std::task::Context;
 
-        use crate::task::Waker;
+        use crate::task::noop_waker_ref;
 
         use super::*;
 
         pub(super) fn with_context<T, R, F>(fut: &mut IntoFuture<T>, f: F) -> R
         where
             T: Unpin,
-            F: FnOnce(Pin<&mut T>, &Waker) -> R,
+            F: FnOnce(Pin<&mut T>, &mut Context<'_>) -> R,
         {
-            let waker = unsafe { Waker::blank() };
-            f(Pin::new(&mut fut.0), &waker)
+            let mut ctx = Context::from_waker(noop_waker_ref());
+            f(Pin::new(&mut fut.0), &mut ctx)
         }
     }
 }
@@ -128,11 +134,11 @@ mod impl_futures01 {
 #[cfg(feature = "std-future")]
 mod impl_std {
     use std::pin::Pin;
+    use std::task::{Context, Poll};
 
     use futures_core::Future;
 
     use crate::response::Response;
-    use crate::task::{Poll, Waker};
 
     use super::IntoFuture;
 
@@ -142,8 +148,8 @@ mod impl_std {
     {
         type Output = Result<T::Ok, T::Error>;
 
-        fn poll(mut self: Pin<&mut Self>, w: &Waker) -> Poll<Self::Output> {
-            Response::poll(Pin::new(&mut self.0), w)
+        fn poll(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Self::Output> {
+            Response::poll(Pin::new(&mut self.0), ctx)
         }
     }
 }
