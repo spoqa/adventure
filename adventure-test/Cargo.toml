@@ -19,20 +19,20 @@ pin-utils = "0.1.0-alpha.4"
 path = "../adventure"
 
 [dependencies.futures]
-version = "0.1.25"
+version = "0.1.28"
 optional = true
 
 [dependencies.futures-core-preview]
-version = "0.3.0-alpha.13"
+version = "0.3.0-alpha.17"
 optional = true
 
 [dependencies.futures-util-preview]
-version = "0.3.0-alpha.13"
+version = "0.3.0-alpha.17"
 features = ["compat"]
 optional = true
 
 [dependencies.futures-executor-preview]
-version = "0.3.0-alpha.13"
+version = "0.3.0-alpha.17"
 optional = true
 
 [dependencies.tokio]
