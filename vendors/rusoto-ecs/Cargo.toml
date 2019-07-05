@@ -16,5 +16,5 @@ edition = "2018"
 
 [dependencies]
 adventure = "0.4.0-alpha.0"
-rusoto_core = "0.37"
-rusoto_ecs = "0.37"
+rusoto_core = "0.40"
+rusoto_ecs = "0.40"

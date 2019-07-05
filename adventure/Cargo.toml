@@ -49,8 +49,8 @@ optional = true
 adventure-rusoto-ecs = "0.3.0-alpha.0"
 tokio = "0.1"
 reqwest = "0.9"
-rusoto_core = "0.37"
-rusoto_ecs = "0.37"
+rusoto_core = "0.40"
+rusoto_ecs = "0.40"
 
 [dev-dependencies.serde]
 version = "1.0"

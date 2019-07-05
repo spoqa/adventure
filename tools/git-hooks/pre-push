@@ -1,5 +1,5 @@
 #!/bin/bash -e
 cargo fmt -- --check
-cargo test --all --examples
-cargo test --all --examples --no-default-features
-cargo test --all --examples --all-features
+cargo test --all --all-targets
+cargo test --all --all-targets --no-default-features
+cargo test --all --all-targets --all-features

@@ -23,11 +23,10 @@ use adventure::{
     response::Future01Response, BaseRequest, OneshotRequest, PagedRequest, Request,
     RetriableRequest,
 };
-use rusoto_core::RusotoFuture;
+use rusoto_core::{RusotoError, RusotoFuture};
 use rusoto_ecs::*;
 
-pub type RusotoResponse<R> =
-    Future01Response<RusotoFuture<<R as BaseRequest>::Ok, <R as BaseRequest>::Error>>;
+pub type RusotoResponse<T, E> = Future01Response<RusotoFuture<T, E>>;
 
 /// A wrapper for various type of requests in [`rusoto_ecs`].
 #[derive(Clone, Debug)]
@@ -115,19 +114,19 @@ macro_rules! impl_adventure {
         )*
     };
 
-    (@ $wrapper:ident, $name:ident, $client:ident; ) => { };
     (@ $wrapper:ident, $name:ident, $client:ident; type Ok = $ok:ident; type Error = $error:ident; $($rest:tt)*) => {
         impl BaseRequest for $wrapper<$name> {
             type Ok = $ok;
-            type Error = $error;
+            type Error = RusotoError<$error>;
         }
 
         impl_adventure!(@@ $wrapper, $name, $client, $error; $($rest)*);
     };
+    (@@ $wrapper:ident, $name:ident, $client:ident, $error:ident; ) => { };
     (@@ $wrapper:ident, $name:ident, $client:ident, $error:ident; retry: $variant:ident; $($rest:tt)*) => {
         impl RetriableRequest for $wrapper<$name> {
             fn should_retry(&self, err: &Self::Error, _next_interval: Duration) -> bool {
-                if let $error::Server(_) = err {
+                if let RusotoError::Service($error::Server(_)) = err {
                     true
                 } else {
                     false
@@ -135,14 +134,11 @@ macro_rules! impl_adventure {
             }
         }
 
-        impl_adventure!(@ $wrapper, $name, $client; $($rest)*);
+        impl_adventure!(@@ $wrapper, $name, $client, $error; $($rest)*);
     };
-    (@@ $wrapper:ident, $name:ident, $client:ident, $error:ident; $($rest:tt)*) => {
-        impl_adventure!(@ $wrapper, $name, $client; $($rest)*);
-    };
-    (@ $wrapper:ident, $name:ident, $client:ident; send: $method:ident; $($rest:tt)*) => {
+    (@@ $wrapper:ident, $name:ident, $client:ident, $error:ident; send: $method:ident; $($rest:tt)*) => {
         impl<C> OneshotRequest<C> for $wrapper<$name> where C: AsEcs {
-            type Response = RusotoResponse<Self>;
+            type Response = RusotoResponse<Self::Ok, $error>;
 
             fn send_once(self, client: C) -> Self::Response {
                 Future01Response::new(client.as_ecs().$method(self.inner))
@@ -150,7 +146,7 @@ macro_rules! impl_adventure {
         }
 
         impl<C> Request<C> for $wrapper<$name> where C: AsEcs {
-            type Response = RusotoResponse<Self>;
+            type Response = RusotoResponse<Self::Ok, $error>;
 
             #[inline]
             fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
@@ -158,9 +154,9 @@ macro_rules! impl_adventure {
             }
         }
 
-        impl_adventure!(@ $wrapper, $name, $client; $($rest)*);
+        impl_adventure!(@@ $wrapper, $name, $client, $error; $($rest)*);
     };
-    (@ $wrapper:ident, $name:ident, $client:ident; advance: $token:ident; $($rest:tt)*) => {
+    (@@ $wrapper:ident, $name:ident, $client:ident, $error:ident; advance: $token:ident; $($rest:tt)*) => {
         impl PagedRequest for $wrapper<$name> {
             fn advance(&mut self, response: &Self::Ok) -> bool {
                 if let Some(next) = response.$token.clone() {
@@ -172,7 +168,7 @@ macro_rules! impl_adventure {
             }
         }
 
-        impl_adventure!(@ $wrapper, $name, $client; $($rest)*);
+        impl_adventure!(@@ $wrapper, $name, $client, $error; $($rest)*);
     }
 }
 
