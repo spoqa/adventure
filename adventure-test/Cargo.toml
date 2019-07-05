@@ -10,7 +10,7 @@ doc = false
 
 [features]
 default = ["adventure/backoff-tokio", "futures"]
-std-future = ["adventure/std-future", "futures-core-preview", "futures-executor-preview", "futures-util-preview"]
+std-future = []
 
 [dependencies]
 pin-utils = "0.1.0-alpha.4"
@@ -24,16 +24,13 @@ optional = true
 
 [dependencies.futures-core-preview]
 version = "0.3.0-alpha.17"
-optional = true
 
 [dependencies.futures-util-preview]
 version = "0.3.0-alpha.17"
 features = ["compat"]
-optional = true
 
 [dependencies.futures-executor-preview]
 version = "0.3.0-alpha.17"
-optional = true
 
 [dependencies.tokio]
 version = "0.1"

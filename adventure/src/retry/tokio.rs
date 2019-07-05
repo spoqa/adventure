@@ -34,11 +34,11 @@ impl Response for Delay {
     type Ok = ();
     type Error = RetryError;
 
-    fn poll(
+    fn try_poll(
         mut self: Pin<&mut Self>,
         ctx: &mut Context<'_>,
     ) -> Poll<Result<Self::Ok, Self::Error>> {
-        let r = match Response::poll(Pin::new(&mut self.inner), ctx) {
+        let r = match Response::try_poll(Pin::new(&mut self.inner), ctx) {
             Poll::Pending => {
                 return Poll::Pending;
             }

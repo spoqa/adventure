@@ -97,7 +97,7 @@ where
         assert!(self.as_mut().next().is_some());
         assert!(self.as_mut().request().is_some());
 
-        let page = match self.as_mut().next().as_pin_mut().unwrap().poll(ctx) {
+        let page = match self.as_mut().next().as_pin_mut().unwrap().try_poll(ctx) {
             Poll::Pending => return Poll::Pending,
             Poll::Ready(Ok(x)) => x,
             Poll::Ready(Err(e)) => {
@@ -120,7 +120,7 @@ where
     }
 }
 
-#[cfg(all(feature = "futures01", not(feature = "std-future")))]
+#[cfg(feature = "futures01")]
 mod impl_futures01 {
     use std::pin::Pin;
     use std::task::Context;
@@ -152,7 +152,6 @@ mod impl_futures01 {
     }
 }
 
-#[cfg(feature = "std-future")]
 mod impl_std {
     use std::pin::Pin;
     use std::task::Context;

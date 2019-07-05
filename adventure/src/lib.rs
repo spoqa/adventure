@@ -77,7 +77,6 @@
 //! ```
 #![deny(rust_2018_idioms)]
 
-pub mod compat;
 pub mod oneshot;
 pub mod paginator;
 pub mod prelude;

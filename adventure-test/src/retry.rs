@@ -6,6 +6,7 @@ use std::time::Duration;
 use futures::future;
 #[cfg(feature = "std-future")]
 use futures_util::future;
+use futures_util::TryFutureExt;
 use pin_utils::pin_mut;
 use tokio::runtime::current_thread::block_on_all;
 
@@ -68,9 +69,7 @@ fn block_on<R>(req: R) -> Result<R::Ok, R::Error>
 where
     R: Response + Unpin,
 {
-    let fut = req.into_future();
-    #[cfg(all(feature = "std-future", not(feature = "futures")))]
-    let fut = fut.compat();
+    let fut = req.compat();
     block_on_all(fut)
 }
 

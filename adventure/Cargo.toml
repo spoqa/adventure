@@ -15,10 +15,10 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [features]
-default = ["backoff-tokio"]
+default = ["backoff-tokio", "std-future"]
 futures01 = ["futures"]
 backoff-tokio = ["futures01", "backoff", "tokio", "tokio-timer"]
-std-future = ["futures-core-preview", "futures-util-preview"]
+std-future = []
 
 [dependencies]
 pin-utils = "0.1.0-alpha.4"
@@ -33,12 +33,10 @@ optional = true
 
 [dependencies.futures-core-preview]
 version = "0.3.0-alpha.17"
-optional = true
 
 [dependencies.futures-util-preview]
 version = "0.3.0-alpha.17"
 features = ["compat"]
-optional = true
 
 [dependencies.tokio]
 version = "0.1"

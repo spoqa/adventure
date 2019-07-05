@@ -254,7 +254,10 @@ where
     type Ok = <R::Response as Response>::Ok;
     type Error = RetryError<WaitError<R, C>>;
 
-    fn poll(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Result<Self::Ok, Self::Error>> {
+    fn try_poll(
+        self: Pin<&mut Self>,
+        ctx: &mut Context<'_>,
+    ) -> Poll<Result<Self::Ok, Self::Error>> {
         self.poll_impl(ctx)
     }
 }
@@ -274,7 +277,7 @@ where
         ctx: &mut Context<'_>,
     ) -> Poll<Result<<R::Response as Response>::Ok, RetryError<WaitError<R, C>>>> {
         if let Some(w) = self.as_mut().wait().as_pin_mut() {
-            match w.poll(ctx) {
+            match w.try_poll(ctx) {
                 Poll::Pending => {
                     return Poll::Pending;
                 }
@@ -298,7 +301,7 @@ where
             .next()
             .as_pin_mut()
             .expect("Assertion failed")
-            .poll(ctx)
+            .try_poll(ctx)
         {
             Poll::Pending => Poll::Pending,
             Poll::Ready(Ok(resp)) => Poll::Ready(Ok(resp)),
