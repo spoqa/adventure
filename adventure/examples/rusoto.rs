@@ -17,11 +17,14 @@ fn main() {
         ..Default::default()
     };
 
-    #[cfg(all(feature = "futures", not(feature = "std-future")))]
+    let req = AwsEcs::from(req);
+
+    #[cfg(feature = "backoff-tokio")]
+    let req = req.retry();
+
+    #[cfg(feature = "futures")]
     tokio::run(
-        AwsEcs::from(req)
-            .retry()
-            .paginate(Arc::new(client))
+        req.paginate(Arc::new(client))
             .for_each(|page| {
                 for service in page.service_arns.unwrap_or_else(Vec::new) {
                     println!("{}", service);

@@ -2,9 +2,6 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-#[cfg(all(feature = "futures", not(feature = "std-future")))]
-use futures::future;
-#[cfg(feature = "std-future")]
 use futures_util::future;
 use futures_util::TryFutureExt;
 use pin_utils::pin_mut;
@@ -28,10 +25,7 @@ impl Clone for Numbers {
     }
 }
 
-#[cfg(feature = "std-future")]
 type Resp = FutureResponseObj<'static, usize, String>;
-#[cfg(all(feature = "futures", not(feature = "std-future")))]
-type Resp = Future01ResponseObj<'static, usize, String>;
 
 impl BaseRequest for Numbers {
     type Ok = usize;

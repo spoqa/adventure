@@ -15,10 +15,9 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [features]
-default = ["backoff-tokio", "std-future"]
+default = ["backoff-tokio"]
 futures01 = ["futures"]
 backoff-tokio = ["futures01", "backoff", "tokio", "tokio-timer"]
-std-future = []
 
 [dependencies]
 pin-utils = "0.1.0-alpha.4"
@@ -56,6 +55,3 @@ rusoto_ecs = "0.37"
 [dev-dependencies.serde]
 version = "1.0"
 features = ["derive"]
-
-[package.metadata.docs.rs]
-features = ["std-future"]

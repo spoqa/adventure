@@ -10,7 +10,6 @@ doc = false
 
 [features]
 default = ["adventure/backoff-tokio", "futures"]
-std-future = []
 
 [dependencies]
 pin-utils = "0.1.0-alpha.4"

@@ -3,7 +3,11 @@
 
 ### Breaking Changes
 
+ - `std-future` feature is removed. Adventure always will work with
+   `core::future::Future`, and `Response` will be identical to
+   `futures_core::TryFuture`.
  - `Request::send` receives `Pin<&mut Self>` instead of `&self`.
+ - required version of `futures-preview` is increased to `0.3.0-alpha.17`.
 
 0.3.0 (March 24, 2019)
 ----------------------
