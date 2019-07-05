@@ -46,7 +46,7 @@ version = "0.2"
 optional = true
 
 [dev-dependencies]
-adventure-rusoto-ecs = "0.2"
+adventure-rusoto-ecs = "0.3.0-alpha.0"
 tokio = "0.1"
 reqwest = "0.9"
 rusoto_core = "0.37"

@@ -153,7 +153,7 @@ macro_rules! impl_adventure {
             type Response = RusotoResponse<Self>;
 
             #[inline]
-            fn send(&self, client: C) -> Self::Response {
+            fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
                 self.clone().send_once(client)
             }
         }

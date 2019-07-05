@@ -1,7 +1,7 @@
 [package]
 workspace = "../.."
 name = "adventure-rusoto-ecs"
-version = "0.2.0"
+version = "0.3.0-alpha.0"
 description = "Adventure to rusoto_ecs"
 repository = "https://github.com/spoqa/adventure"
 categories = [
@@ -15,6 +15,6 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
-adventure = "0.3.0"
+adventure = "0.4.0-alpha.0"
 rusoto_core = "0.37"
 rusoto_ecs = "0.37"
