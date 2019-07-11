@@ -14,7 +14,12 @@ authors = ["Eunchong Yu <gracie@spoqa.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
 
+[features]
+default = ["native-tls"]
+native-tls = ["rusoto_core/native-tls", "rusoto_ecs/native-tls"]
+rustls = ["rusoto_core/rustls", "rusoto_ecs/rustls"]
+
 [dependencies]
 adventure = "0.4.0-alpha.0"
-rusoto_core = "0.40"
-rusoto_ecs = "0.40"
+rusoto_core = { version = "0.40", default-features = false }
+rusoto_ecs = { version = "0.40", default-features = false }

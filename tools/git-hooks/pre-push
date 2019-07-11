@@ -2,4 +2,4 @@
 cargo fmt -- --check
 cargo test --all --all-targets
 cargo test --all --all-targets --no-default-features
-cargo test --all --all-targets --all-features
+cargo test --all --all-targets --no-default-features --features=backoff-tokio,rustls

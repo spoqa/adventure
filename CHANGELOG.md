@@ -8,11 +8,14 @@
    `futures_core::TryFuture`.
  - `Request::send` receives `Pin<&mut Self>` instead of `&self`.
  - required version of `futures-preview` is increased to `0.3.0-alpha.17`.
+ - required version of Rusoto is increased to `0.40`.
 
 ### New features
 
  - Paginator will implement FusedStream, mainly to be used easily with
    `select!` macro of futures 0.3.
+ - Companion packages for Rusoto, including `adventure-rusoto-ecs`, will offer
+   the features like `native-tls` or `rustls`.
 
 0.3.0 (March 24, 2019)
 ----------------------
