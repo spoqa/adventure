@@ -156,7 +156,7 @@ mod impl_std {
     use std::pin::Pin;
     use std::task::Context;
 
-    use futures_core::Stream;
+    use futures_core::{FusedStream, Stream};
 
     use super::{PagedRequest, Paginator};
     use crate::request::Request;
@@ -171,6 +171,16 @@ mod impl_std {
 
         fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             Paginator::poll_next(self, ctx)
+        }
+    }
+
+    impl<C, R> FusedStream for Paginator<C, R>
+    where
+        C: Clone,
+        R: PagedRequest + Request<C> + Unpin,
+    {
+        fn is_terminated(&self) -> bool {
+            self.next.is_none()
         }
     }
 }

@@ -9,6 +9,11 @@
  - `Request::send` receives `Pin<&mut Self>` instead of `&self`.
  - required version of `futures-preview` is increased to `0.3.0-alpha.17`.
 
+### New features
+
+ - Paginator will implement FusedStream, mainly to be used easily with
+   `select!` macro of futures 0.3.
+
 0.3.0 (March 24, 2019)
 ----------------------
 
