@@ -1,6 +1,6 @@
-use std::pin::Pin;
-use std::task::Context;
-use std::time::Duration;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+use core::time::Duration;
 
 use pin_utils::unsafe_pinned;
 
@@ -9,7 +9,6 @@ use crate::oneshot::OneshotRequest;
 use crate::paginator::PagedRequest;
 use crate::request::{BaseRequest, Request};
 use crate::response::Response;
-use crate::task::Poll;
 
 pub trait RetrialPredicate<R>
 where

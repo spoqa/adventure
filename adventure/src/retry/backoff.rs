@@ -1,4 +1,4 @@
-use std::time::Duration;
+use core::time::Duration;
 
 pub use backoff::{backoff::Backoff, ExponentialBackoff as ExponentialBackoffImpl, SystemClock};
 

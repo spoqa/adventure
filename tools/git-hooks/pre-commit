@@ -2,4 +2,5 @@
 cargo fmt -- --check
 cargo check --all --examples --tests
 cargo check --all --examples --tests --no-default-features
+cargo check --all --examples --tests --no-default-features --features=alloc
 cargo check --all --examples --tests --no-default-features --features=backoff-tokio,rustls

@@ -1,5 +1,7 @@
+use core::fmt::{self, Display};
+
+#[cfg(feature = "std")]
 use std::error::Error as StdError;
-use std::fmt::{self, Display};
 
 pub enum Infallible {}
 
@@ -27,6 +29,7 @@ impl<E: Display> Display for RetryError<E> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<E: StdError + 'static> StdError for RetryError<E> {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         use RetryErrorKind::*;

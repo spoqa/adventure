@@ -10,14 +10,15 @@ pub use futures_core::TryFuture as Response;
 
 #[cfg(feature = "futures01")]
 mod impl_futures01 {
-    use std::pin::Pin;
-    use std::task::Context;
+    use alloc::boxed::Box;
+    use core::pin::Pin;
+    use core::task::{Context, Poll};
 
     use futures::Future;
+    use futures_util::compat::Compat01As03 as Compat;
     use pin_utils::unsafe_pinned;
 
     use super::Response;
-    use crate::task::{Compat, Poll};
 
     /// Converts a futures 0.1 [`Future`] into a [`Response`].
     #[must_use = "responses do nothing unless polled"]
@@ -128,8 +129,11 @@ mod impl_futures01 {
 }
 
 #[doc(hidden)]
+#[cfg(feature = "alloc")]
 mod impl_std {
-    use std::pin::Pin;
+    use alloc::boxed::Box;
+    use core::pin::Pin;
+    use core::task::{Context, Poll};
 
     use futures_core::{
         future::{FutureObj, LocalFutureObj},
@@ -138,7 +142,6 @@ mod impl_std {
     use pin_utils::unsafe_pinned;
 
     use super::Response;
-    use crate::task::{Context, Poll};
 
     /// Converts a [`std::future::Future`] into a [`Response`].
     #[must_use = "responses do nothing unless polled"]

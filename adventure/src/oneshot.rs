@@ -20,17 +20,6 @@ pub trait OneshotRequest<C>: BaseRequest {
     }
 }
 
-impl<R, C> OneshotRequest<C> for Box<R>
-where
-    R: OneshotRequest<C>,
-{
-    type Response = R::Response;
-    fn send_once(self, client: C) -> Self::Response {
-        let inner = *self;
-        inner.send_once(client)
-    }
-}
-
 /// An [`OneshotRequest`] adaptor for types that implements [`Request`].
 #[derive(Clone)]
 pub struct Oneshot<R> {
@@ -66,7 +55,7 @@ where
 
 #[cfg(feature = "backoff")]
 mod impl_retry {
-    use std::time::Duration;
+    use core::time::Duration;
 
     use super::Oneshot;
     use crate::retry::RetriableRequest;
@@ -77,6 +66,24 @@ mod impl_retry {
     {
         fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
             self.inner.should_retry(error, next_interval)
+        }
+    }
+}
+
+#[cfg(feature = "alloc")]
+mod feature_alloc {
+    use alloc::boxed::Box;
+
+    use super::*;
+
+    impl<R, C> OneshotRequest<C> for Box<R>
+    where
+        R: OneshotRequest<C>,
+    {
+        type Response = R::Response;
+        fn send_once(self, client: C) -> Self::Response {
+            let inner = *self;
+            inner.send_once(client)
         }
     }
 }

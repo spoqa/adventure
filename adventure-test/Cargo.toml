@@ -9,27 +9,14 @@ publish = false
 doc = false
 
 [features]
-default = ["adventure/backoff-tokio", "futures"]
-
-[dependencies]
-pin-utils = "0.1.0-alpha.4"
+default = ["adventure/backoff-tokio"]
 
 [dependencies.adventure]
 path = "../adventure"
 
-[dependencies.futures]
-version = "0.1.28"
-optional = true
-
-[dependencies.futures-core-preview]
-version = "0.3.0-alpha.17"
-
-[dependencies.futures-util-preview]
+[dependencies.futures-preview]
 version = "0.3.0-alpha.17"
 features = ["compat"]
-
-[dependencies.futures-executor-preview]
-version = "0.3.0-alpha.17"
 
 [dependencies.tokio]
 version = "0.1"
@@ -40,4 +27,11 @@ version = "0.2"
 optional = true
 
 [dev-dependencies]
+adventure-rusoto-ecs = "0.3.0-alpha.0"
 tokio = "0.1"
+rusoto_core = "0.40"
+rusoto_ecs = "0.40"
+
+[dev-dependencies.serde]
+version = "1.0"
+features = ["derive"]

@@ -76,6 +76,10 @@
 //! # })().unwrap(); }
 //! ```
 #![deny(rust_2018_idioms)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 pub mod oneshot;
 pub mod paginator;
@@ -83,7 +87,6 @@ pub mod prelude;
 pub mod repeat;
 pub mod request;
 pub mod response;
-pub mod task;
 
 #[cfg(feature = "backoff")]
 pub mod retry;

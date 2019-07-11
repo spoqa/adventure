@@ -1,8 +1,6 @@
 //! A base trait represents a request.
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::rc::Rc;
-use std::sync::Arc;
+use core::ops::{Deref, DerefMut};
+use core::pin::Pin;
 
 use crate::oneshot::Oneshot;
 use crate::response::Response;
@@ -22,30 +20,6 @@ pub trait BaseRequest {
 }
 
 impl<R> BaseRequest for &R
-where
-    R: BaseRequest,
-{
-    type Ok = R::Ok;
-    type Error = R::Error;
-}
-
-impl<R> BaseRequest for Box<R>
-where
-    R: BaseRequest,
-{
-    type Ok = R::Ok;
-    type Error = R::Error;
-}
-
-impl<R> BaseRequest for Rc<R>
-where
-    R: BaseRequest,
-{
-    type Ok = R::Ok;
-    type Error = R::Error;
-}
-
-impl<R> BaseRequest for Arc<R>
 where
     R: BaseRequest,
 {
@@ -105,17 +79,6 @@ pub trait Request<C>: BaseRequest {
     }
 }
 
-impl<R, C> Request<C> for Box<R>
-where
-    R: Request<C>,
-{
-    type Response = R::Response;
-    fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
-        let pinned: Pin<&mut R> = unsafe { self.map_unchecked_mut(|b| b.as_mut()) };
-        R::send(pinned, client)
-    }
-}
-
 impl<P, C> Request<C> for Pin<P>
 where
     P: DerefMut + Unpin,
@@ -124,5 +87,47 @@ where
     type Response = <<P as Deref>::Target as Request<C>>::Response;
     fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
         <<P as Deref>::Target>::send(self.get_mut().as_mut(), client)
+    }
+}
+
+#[cfg(feature = "alloc")]
+mod feature_alloc {
+    use alloc::{boxed::Box, rc::Rc, sync::Arc};
+
+    use super::*;
+
+    impl<R> BaseRequest for Box<R>
+    where
+        R: BaseRequest,
+    {
+        type Ok = R::Ok;
+        type Error = R::Error;
+    }
+
+    impl<R> BaseRequest for Rc<R>
+    where
+        R: BaseRequest,
+    {
+        type Ok = R::Ok;
+        type Error = R::Error;
+    }
+
+    impl<R> BaseRequest for Arc<R>
+    where
+        R: BaseRequest,
+    {
+        type Ok = R::Ok;
+        type Error = R::Error;
+    }
+
+    impl<R, C> Request<C> for Box<R>
+    where
+        R: Request<C>,
+    {
+        type Response = R::Response;
+        fn send(self: Pin<&mut Self>, client: C) -> Self::Response {
+            let pinned: Pin<&mut R> = unsafe { self.map_unchecked_mut(|b| b.as_mut()) };
+            R::send(pinned, client)
+        }
     }
 }

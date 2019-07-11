@@ -1,4 +1,4 @@
-use std::pin::Pin;
+use core::pin::Pin;
 
 use crate::oneshot::OneshotRequest;
 use crate::request::{BaseRequest, Request};
@@ -51,7 +51,7 @@ where
 
 #[cfg(feature = "backoff")]
 mod impl_retry {
-    use std::time::Duration;
+    use core::time::Duration;
 
     use super::Repeat;
     use crate::retry::RetriableRequest;

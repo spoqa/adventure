@@ -1,12 +1,12 @@
-use std::pin::Pin;
-use std::task::Context;
+use core::pin::Pin;
+use core::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
+use futures_util::compat::Compat01As03 as Compat;
 use tokio_timer::Delay as DelayImpl;
 
 use super::{RetryError, Timer};
 use crate::response::Response;
-use crate::task::{Compat, Poll};
 
 /// Provides a delayed response using [`tokio_timer`] crate.
 #[derive(Clone, Default)]

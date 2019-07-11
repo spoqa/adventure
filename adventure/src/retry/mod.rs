@@ -5,9 +5,9 @@ pub mod tokio;
 mod error;
 mod impls;
 
-use std::ops::Deref;
-use std::pin::Pin;
-use std::time::Duration;
+use core::ops::Deref;
+use core::pin::Pin;
+use core::time::Duration;
 
 use crate::request::BaseRequest;
 use crate::response::Response;
@@ -63,15 +63,6 @@ where
     }
 }
 
-impl<R> RetriableRequest for Box<R>
-where
-    R: RetriableRequest,
-{
-    fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
-        (**self).should_retry(error, next_interval)
-    }
-}
-
 impl<P> RetriableRequest for Pin<P>
 where
     P: Deref,
@@ -86,4 +77,20 @@ pub trait Timer {
     type Delay: Response<Ok = (), Error = RetryError>;
 
     fn expires_in(&mut self, interval: Duration) -> Self::Delay;
+}
+
+#[cfg(feature = "alloc")]
+mod feature_alloc {
+    use alloc::boxed::Box;
+
+    use super::*;
+
+    impl<R> RetriableRequest for Box<R>
+    where
+        R: RetriableRequest,
+    {
+        fn should_retry(&self, error: &Self::Error, next_interval: Duration) -> bool {
+            (**self).should_retry(error, next_interval)
+        }
+    }
 }

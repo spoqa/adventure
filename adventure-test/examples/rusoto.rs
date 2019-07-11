@@ -22,18 +22,18 @@ fn main() {
     #[cfg(feature = "backoff-tokio")]
     let req = req.retry();
 
-    #[cfg(feature = "futures")]
     tokio::run(
         req.paginate(Arc::new(client))
-            .for_each(|page| {
+            .try_for_each(|page| {
                 for service in page.service_arns.unwrap_or_else(Vec::new) {
                     println!("{}", service);
                 }
-                Ok(())
+                future::ok(())
             })
             .or_else(|err| {
                 eprintln!("Error occured: {}", err);
-                Ok(())
-            }),
+                future::ok(())
+            })
+            .compat(),
     );
 }

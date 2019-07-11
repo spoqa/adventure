@@ -3,15 +3,21 @@
 
 ### Breaking Changes
 
- - `std-future` feature is removed. Adventure always will work with
-   `core::future::Future`, and `Response` will be identical to
-   `futures_core::TryFuture`.
+ - 1.36 or higher version of Rust compiler is required.
+ - `std-future` feature is removed, because `core::future` always will be
+   available.
+ - Definition of `Response` has changed. Now it is the same as
+   `futures_core::TryFuture`. Moreover, `task` and some modules are removed
+   that was related to compatibiliy with futures 0.1.
  - `Request::send` receives `Pin<&mut Self>` instead of `&self`.
+ - Implementation of futures 0.1 Stream for Paginator is removed.
  - required version of `futures-preview` is increased to `0.3.0-alpha.17`.
  - required version of Rusoto is increased to `0.40`.
 
 ### New features
 
+ - Rewritten to be depends on `core::future` and futures 0.3 by default.
+ - Compatible with `#[no_std]`.
  - Paginator will implement FusedStream, mainly to be used easily with
    `select!` macro of futures 0.3.
  - Companion packages for Rusoto, including `adventure-rusoto-ecs`, will offer

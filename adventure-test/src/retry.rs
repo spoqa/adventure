@@ -2,9 +2,7 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-use futures_util::future;
-use futures_util::TryFutureExt;
-use pin_utils::pin_mut;
+use futures::{pin_mut, prelude::*};
 use tokio::runtime::current_thread::block_on_all;
 
 use adventure::prelude::*;

@@ -1,12 +1,12 @@
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::Context;
+use core::ops::{Deref, DerefMut};
+use core::pin::Pin;
+use core::task::{Context, Poll};
 
+use futures_core::{FusedStream, Stream};
 use pin_utils::unsafe_pinned;
 
 use crate::request::{BaseRequest, Request};
 use crate::response::Response;
-use crate::task::Poll;
 
 /// A request able to send subsequent requests to enumerate the entire result.
 pub trait PagedRequest: BaseRequest {
@@ -19,15 +19,6 @@ pub trait PagedRequest: BaseRequest {
         Self: Request<C> + Sized,
     {
         Paginator::new(client, self)
-    }
-}
-
-impl<R> PagedRequest for Box<R>
-where
-    R: PagedRequest,
-{
-    fn advance(&mut self, response: &Self::Ok) -> bool {
-        (**self).advance(response)
     }
 }
 
@@ -120,67 +111,40 @@ where
     }
 }
 
-#[cfg(feature = "futures01")]
-mod impl_futures01 {
-    use std::pin::Pin;
-    use std::task::Context;
+impl<C, R> Stream for Paginator<C, R>
+where
+    C: Clone,
+    R: PagedRequest + Request<C> + Unpin,
+{
+    type Item = Result<R::Ok, R::Error>;
 
-    use futures::{Async, Poll, Stream};
-
-    use super::{PagedRequest, Paginator};
-    use crate::request::Request;
-    use crate::task::noop_waker_ref;
-
-    impl<C, R> Stream for Paginator<C, R>
-    where
-        C: Clone + Unpin,
-        R: PagedRequest + Request<C> + Unpin,
-    {
-        type Item = R::Ok;
-        type Error = R::Error;
-
-        fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-            use crate::task::Poll::*;
-            let mut ctx = Context::from_waker(noop_waker_ref());
-            match Paginator::poll_next(Pin::new(self), &mut ctx) {
-                Ready(Some(Ok(i))) => Ok(Async::Ready(Some(i))),
-                Ready(Some(Err(e))) => Err(e),
-                Ready(None) => Ok(Async::Ready(None)),
-                Pending => Ok(Async::NotReady),
-            }
-        }
+    fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        Paginator::poll_next(self, ctx)
     }
 }
 
-mod impl_std {
-    use std::pin::Pin;
-    use std::task::Context;
-
-    use futures_core::{FusedStream, Stream};
-
-    use super::{PagedRequest, Paginator};
-    use crate::request::Request;
-    use crate::task::Poll;
-
-    impl<C, R> Stream for Paginator<C, R>
-    where
-        C: Clone,
-        R: PagedRequest + Request<C> + Unpin,
-    {
-        type Item = Result<R::Ok, R::Error>;
-
-        fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-            Paginator::poll_next(self, ctx)
-        }
+impl<C, R> FusedStream for Paginator<C, R>
+where
+    C: Clone,
+    R: PagedRequest + Request<C> + Unpin,
+{
+    fn is_terminated(&self) -> bool {
+        self.next.is_none()
     }
+}
 
-    impl<C, R> FusedStream for Paginator<C, R>
+#[cfg(feature = "alloc")]
+mod feature_alloc {
+    use alloc::boxed::Box;
+
+    use super::*;
+
+    impl<R> PagedRequest for Box<R>
     where
-        C: Clone,
-        R: PagedRequest + Request<C> + Unpin,
+        R: PagedRequest,
     {
-        fn is_terminated(&self) -> bool {
-            self.next.is_none()
+        fn advance(&mut self, response: &Self::Ok) -> bool {
+            (**self).advance(response)
         }
     }
 }
