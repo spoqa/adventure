@@ -1,0 +1,30 @@
+[package]
+workspace = "../.."
+name = "adventure-rusoto-sqs"
+version = "0.3.0-alpha.0"
+description = "Adventure to rusoto_sqs"
+repository = "https://github.com/spoqa/adventure"
+categories = [
+    "asynchronous",
+    "api-bindings",
+    "network-programming",
+    "web-programming::http-client",
+]
+authors = ["Eunchong Yu <gracie@spoqa.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[features]
+default = ["native-tls"]
+native-tls = ["rusoto_core/native-tls", "rusoto_sqs/native-tls"]
+rustls = ["rusoto_core/rustls", "rusoto_sqs/rustls"]
+
+[dependencies]
+adventure = "0.4.0-alpha.0"
+futures = "0.1"
+rusoto_core = { version = "0.40", default-features = false }
+rusoto_sqs = { version = "0.40", default-features = false }
+sha2 = "0.7.1"
+
+[dev-dependencies]
+regex = "1.1"

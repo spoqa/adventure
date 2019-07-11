@@ -1,0 +1,25 @@
+[package]
+workspace = "../.."
+name = "adventure-rusoto-sns"
+version = "0.3.0-alpha.0"
+description = "Adventure to rusoto_sns"
+repository = "https://github.com/spoqa/adventure"
+categories = [
+    "asynchronous",
+    "api-bindings",
+    "network-programming",
+    "web-programming::http-client",
+]
+authors = ["Eunchong Yu <gracie@spoqa.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[features]
+default = ["native-tls"]
+native-tls = ["rusoto_core/native-tls", "rusoto_sns/native-tls"]
+rustls = ["rusoto_core/rustls", "rusoto_sns/rustls"]
+
+[dependencies]
+adventure = "0.4.0-alpha.0"
+rusoto_core = { version = "0.40", default-features = false }
+rusoto_sns = { version = "0.40", default-features = false }
