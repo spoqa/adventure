@@ -1,9 +1,8 @@
+use core::convert::Infallible;
 use core::fmt::{self, Display};
 
 #[cfg(feature = "std")]
 use std::error::Error as StdError;
-
-pub enum Infallible {}
 
 /// Errors encountered by the retrial operation.
 #[derive(Debug)]
@@ -15,7 +14,14 @@ pub struct RetryError<E = Infallible> {
 enum RetryErrorKind<E> {
     Aborted(E),
     Timeout,
+    #[allow(dead_code)]
     TimerShutdown,
+}
+
+impl<E> From<Infallible> for RetryError<E> {
+    fn from(e: Infallible) -> Self {
+        match e {}
+    }
 }
 
 impl<E: Display> Display for RetryError<E> {
@@ -53,6 +59,7 @@ impl<E> RetryError<E> {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) const fn shutdown() -> Self {
         RetryError {
             inner: RetryErrorKind::TimerShutdown,
