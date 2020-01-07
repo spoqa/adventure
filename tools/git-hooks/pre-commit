@@ -1,6 +1,17 @@
 #!/bin/bash -e
 cargo fmt -- --check
-cargo check --all --examples --tests
-cargo check --all --examples --tests --no-default-features
-cargo check --all --examples --tests --no-default-features --features=alloc
-cargo check --all --examples --tests --no-default-features --features=backoff-tokio,rustls
+cargo check --workspace --examples --tests
+pushd adventure
+cargo check --all-targets --no-default-features
+cargo check --all-targets --no-default-features --features=alloc
+cargo check --all-targets --no-default-features --features=backoff-tokio
+popd
+pushd vendors/rusoto-ecs
+cargo check --all-targets --no-default-features --features=rustls
+popd
+pushd vendors/rusoto-sns
+cargo check --all-targets --no-default-features --features=rustls
+popd
+pushd vendors/rusoto-sqs
+cargo check --all-targets --no-default-features --features=rustls
+popd
