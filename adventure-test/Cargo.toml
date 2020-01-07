@@ -14,24 +14,29 @@ default = ["adventure/backoff-tokio"]
 [dependencies.adventure]
 path = "../adventure"
 
-[dependencies.futures-preview]
-version = "0.3.0-alpha.17"
+[dependencies.futures]
+version = "0.3.1"
 features = ["compat"]
 
 [dependencies.tokio]
-version = "0.1"
+version = "0.2.6"
 optional = true
 
 [dependencies.tokio-timer]
-version = "0.2"
+version = "0.2.12"
 optional = true
 
 [dev-dependencies]
-adventure-rusoto-ecs = "0.3.0-alpha.0"
-tokio = "0.1"
-rusoto_core = "0.40"
-rusoto_ecs = "0.40"
+rusoto_core = "0.42.0"
+rusoto_ecs = "0.42.0"
+
+[dev-dependencies.tokio]
+version = "0.2.6"
+features = ["full"]
+
+[dev-dependencies.adventure-rusoto-ecs]
+path = "../vendors/rusoto-ecs"
 
 [dev-dependencies.serde]
-version = "1.0"
+version = "1.0.104"
 features = ["derive"]

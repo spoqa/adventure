@@ -20,6 +20,6 @@ native-tls = ["rusoto_core/native-tls", "rusoto_ecs/native-tls"]
 rustls = ["rusoto_core/rustls", "rusoto_ecs/rustls"]
 
 [dependencies]
-adventure = "0.4.0-alpha.0"
-rusoto_core = { version = "0.40", default-features = false }
-rusoto_ecs = { version = "0.40", default-features = false }
+adventure = { version = "0.4.0-alpha.0", path = "../../adventure" }
+rusoto_core = { version = "0.42.0", default-features = false }
+rusoto_ecs = { version = "0.42.0", default-features = false }
