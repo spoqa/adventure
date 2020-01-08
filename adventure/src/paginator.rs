@@ -2,7 +2,7 @@ use core::ops::{Deref, DerefMut};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-use futures_core::{FusedStream, Stream};
+use futures::stream::{FusedStream, Stream};
 use pin_utils::unsafe_pinned;
 
 use crate::request::{BaseRequest, Request};

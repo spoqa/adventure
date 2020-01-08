@@ -15,11 +15,12 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [features]
-default = ["backoff-tokio", "std"]
-std = ["alloc", "futures-core-preview/std", "futures-util-preview/std"]
-alloc = []
-futures01 = ["futures", "std", "futures-util-preview/compat"]
-backoff-tokio = ["futures01", "backoff", "tokio", "tokio-timer"]
+default = ["backoff-tokio", "std", "futures01"]
+std = ["alloc", "futures/std"]
+alloc = ["futures/alloc"]
+futures01 = ["futures_01", "std", "futures/compat"]
+tokio-timer = ["tokio/time"]
+backoff-tokio = ["backoff", "tokio-timer"]
 
 [dependencies]
 pin-utils = "0.1.0-alpha.4"
@@ -28,27 +29,21 @@ pin-utils = "0.1.0-alpha.4"
 version = "0.1.5"
 optional = true
 
-[dependencies.futures]
-version = "0.1.28"
+[dependencies.futures_01]
+version = "0.1"
+package = "futures"
 default-features = false
 optional = true
 
-[dependencies.futures-core-preview]
-version = "0.3.0-alpha.17"
-default-features = false
-
-[dependencies.futures-util-preview]
-version = "0.3.0-alpha.17"
+[dependencies.futures]
+version = "0.3.1"
 default-features = false
 
 [dependencies.reqwest]
-version = "0.9"
+version = "0.10.0"
 optional = true
 
 [dependencies.tokio]
-version = "0.1"
-optional = true
-
-[dependencies.tokio-timer]
-version = "0.2"
+version = "0.2.6"
+default-features = false
 optional = true

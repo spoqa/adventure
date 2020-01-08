@@ -1,3 +1,4 @@
+use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::time::Duration;
@@ -244,19 +245,15 @@ where
 {
 }
 
-impl<R, C> Response for Retrial<R, C>
+impl<R, C> Future for Retrial<R, C>
 where
     R: RetryMethod<C> + Unpin,
     R::Response: Unpin,
     C: Clone,
 {
-    type Ok = <R::Response as Response>::Ok;
-    type Error = RetryError<WaitError<R, C>>;
+    type Output = Result<<R::Response as Response>::Ok, RetryError<WaitError<R, C>>>;
 
-    fn try_poll(
-        self: Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-    ) -> Poll<Result<Self::Ok, Self::Error>> {
+    fn poll(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Self::Output> {
         self.poll_impl(ctx)
     }
 }

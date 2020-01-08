@@ -7,4 +7,5 @@ pub use crate::oneshot::OneshotRequest;
 pub use crate::paginator::PagedRequest;
 pub use crate::request::{BaseRequest, Request};
 pub use crate::response::Response;
+#[cfg(feature = "backoff")]
 pub use crate::retry::RetriableRequest;

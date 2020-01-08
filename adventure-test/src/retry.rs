@@ -3,7 +3,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use futures::{pin_mut, prelude::*};
-use tokio::runtime::current_thread::block_on_all;
 
 use adventure::prelude::*;
 use adventure::response::*;
@@ -57,16 +56,8 @@ impl RetriableRequest for Numbers {
     }
 }
 
-fn block_on<R>(req: R) -> Result<R::Ok, R::Error>
-where
-    R: Response + Unpin,
-{
-    let fut = req.compat();
-    block_on_all(fut)
-}
-
-#[test]
-fn retry_send_once() {
+#[tokio::test]
+async fn retry_send_once() {
     let numbers = Numbers {
         current: AtomicUsize::new(1),
         end: 5,
@@ -74,22 +65,22 @@ fn retry_send_once() {
     pin_mut!(numbers);
     let res = numbers.retry().send_once(());
 
-    assert_eq!(block_on(res).unwrap(), 5);
+    assert_eq!(res.await.unwrap(), 5);
 }
 
-#[test]
-fn retry_clone() {
+#[tokio::test]
+async fn retry_clone() {
     let numbers = Numbers {
         current: AtomicUsize::new(1),
         end: 5,
     };
     let cloned = numbers.retry().clone();
 
-    assert_eq!(block_on(cloned.send_once(())).unwrap(), 5);
+    assert_eq!(cloned.send_once(()).await.unwrap(), 5);
 }
 
-#[test]
-fn retry_send() {
+#[tokio::test]
+async fn retry_send() {
     let numbers = Numbers {
         current: AtomicUsize::new(1),
         end: 5,
@@ -98,5 +89,5 @@ fn retry_send() {
     pin_mut!(req);
     let res = req.send(());
 
-    assert_eq!(block_on(res).unwrap(), 5);
+    assert_eq!(res.await.unwrap(), 5);
 }
