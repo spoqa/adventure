@@ -1,4 +1,18 @@
-0.4.0 (not released)
+0.5.0 (January 8, 2020)
+--------------------
+
+### Breaking Changes
+
+ - 1.39 of higher version of Rust compiler is required
+ - required version of `futures` is increased to `0.3`
+ - required version of Rusoto is increased to `0.42`
+ - required version of `tokio` is increased to `0.2`
+
+### New features
+
+ - Compatible with stable Rust, and async-await syntax
+
+0.4.0 (July 11, 2019)
 --------------------
 
 ### Breaking Changes
